@@ -611,6 +611,21 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	for_each_cpu(j, policy->cpus) {
 		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
 		unsigned long j_util, j_max;
+		s64 delta_ns;
+
+		/*
+		 * If the CPU utilization was last updated before the previous
+		 * frequency update and the time elapsed between the last update
+		 * of the CPU utilization and the last frequency update is long
+		 * enough, don't take the CPU into account as it probably is
+		 * idle now (and clear iowait_boost for it).
+		 */
+		delta_ns = last_freq_update_time - j_sg_cpu->last_update;
+		if (delta_ns > stale_ns) {
+			sugov_iowait_reset(j_sg_cpu, last_freq_update_time,
+					   false);
+			continue;
+		}
 
 		/*
 		 * If the util value for all CPUs in a policy is 0, just using >
@@ -1122,6 +1137,7 @@ static int sugov_init(struct cpufreq_policy *policy)
 
 	policy->governor_data = sg_policy;
 	sg_policy->tunables = tunables;
+	stale_ns = sched_ravg_window + (sched_ravg_window >> 3);
 
 	util = target_util(sg_policy, sg_policy->tunables->rtg_boost_freq);
 	sg_policy->rtg_boost_util = util;
