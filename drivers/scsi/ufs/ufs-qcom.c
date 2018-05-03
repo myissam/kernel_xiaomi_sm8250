@@ -1516,7 +1516,6 @@ void ufs_enter_h8_disable(struct Scsi_Host *shost)
 
 	hba->caps &= ~UFSHCD_CAP_CLK_GATING;
 	hba->caps &= ~UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
-	hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
 	hba->caps &= ~UFSHCD_CAP_POWER_COLLAPSE_DURING_HIBERN8;
 
 	hba->ahit = FIELD_PREP(UFSHCI_AHIBERN8_TIMER_MASK, 0);
