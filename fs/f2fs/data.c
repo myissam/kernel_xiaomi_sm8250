@@ -921,7 +921,6 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
 #ifdef CONFIG_FS_HPB
 	struct inode *inode;
 #endif
-
 	f2fs_bug_on(sbi, is_read_io(fio->op));
 
 	down_write(&io->io_rwsem);
@@ -981,12 +980,11 @@ alloc_new:
 		__submit_merged_bio(io);
 		goto alloc_new;
 	}
-
 #ifdef CONFIG_FS_HPB
-	if (is_inode_flag_set(inode, FI_HPB_INODE))
-		io->bio->bi_opf |= REQ_HPB_PREFER;
+       if(is_inode_flag_set(inode, FI_HPB_INODE)) {
+               io->bio->bi_opf |= REQ_HPB_PREFER;
+       }
 #endif
-
 	if (fio->io_wbc)
 		wbc_account_io(fio->io_wbc, bio_page, PAGE_SIZE);
 
@@ -3739,11 +3737,12 @@ static ssize_t f2fs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 		if (do_opu)
 			down_read(&fi->i_gc_rwsem[READ]);
 	}
-	if (rw == WRITE)
+	if(rw == WRITE)
 		dio_flags |= DIO_LOCKING;
 #ifdef CONFIG_FS_HPB
-	if (is_inode_flag_set(inode, FI_HPB_INODE))
+	if(is_inode_flag_set(inode, FI_HPB_INODE)) {
 		dio_flags |= DIO_HPB_IO;
+	}
 #endif
 
 	err = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
