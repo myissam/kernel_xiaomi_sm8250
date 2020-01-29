@@ -57,7 +57,6 @@
 #include "ufs-sysfs.h"
 #include "ufs-debugfs.h"
 #include "ufs-qcom.h"
-
 static bool ufshcd_wb_sup(struct ufs_hba *hba);
 static int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable);
 static int ufshcd_wb_buf_flush_enable(struct ufs_hba *hba);
@@ -67,7 +66,6 @@ static int ufshcd_wb_toggle_flush_during_h8(struct ufs_hba *hba, bool set);
 
 static unsigned int storage_mfrid;
 #define MANUFACTURER_SAMSUNG 0x1CE
-#define MANUFACTURER_TOSHIBA 0x198
 #define IS_SAMSUNG_DEVICE(mfrid)   (MANUFACTURER_SAMSUNG == mfrid)
 #ifdef CONFIG_DEBUG_FS
 
@@ -3817,6 +3815,13 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	int lun = ufshcd_scsi_to_upiu_lun(cmd->device->lun);
 #endif
 
+#if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
+	struct scsi_cmnd *pre_cmd;
+	struct ufshcd_lrb *add_lrbp;
+	int add_tag;
+	int pre_req_err = -EBUSY;
+	int lun = ufshcd_scsi_to_upiu_lun(cmd->device->lun);
+#endif
 	hba = shost_priv(host);
 
 	if (!cmd || !cmd->request || !hba)
@@ -3927,7 +3932,6 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	}
 	if (ufshcd_is_hibern8_on_idle_allowed(hba))
 		WARN_ON(hba->hibern8_on_idle.state != HIBERN8_EXITED);
-
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
 	add_tag = ufsf_hpb_prepare_pre_req(hba->ufsf, cmd, lun);
 	if (add_tag == -EAGAIN) {
@@ -3949,6 +3953,8 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 		hba->lrb[tag].hpb_ctx_id = MAX_HPB_CONTEXT_ID;
 send_orig_cmd:
 #endif
+	/* Vote PM QoS for the request */
+	ufshcd_vops_pm_qos_req_start(hba, cmd->request);
 
 	WARN_ON(hba->clk_gating.state != CLKS_ON);
 
@@ -6725,7 +6731,7 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	struct scsi_cmnd *cmd;
 	int result;
 	int index;
-#if defined(CONFIG_UFSFEATURE_31)
+#if defined (CONFIG_UFSFEATURE_31)
 	bool scsi_req = false;
 #endif
 
@@ -6766,7 +6772,7 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 
 			/* Do not touch lrbp after scsi done */
 			cmd->scsi_done(cmd);
-#if defined (CONFIG_UFSFEATURE_31)
+#if defined(CONFIG_UFSFEATURE_31)
 			scsi_req = true;
 #endif
 		} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
@@ -7162,11 +7168,15 @@ static bool ufshcd_wb_sup(struct ufs_hba *hba)
 	if (IS_SAMSUNG_DEVICE(storage_mfrid))
 		return false;
 	else
-		return (hba->dev_info.d_ext_ufs_feature_sup &
-			UFS_DEV_WRITE_BOOSTER_SUP);
+		return ((hba->dev_info.d_ext_ufs_feature_sup &
+			 UFS_DEV_WRITE_BOOSTER_SUP) &&
+			(hba->dev_info.b_wb_buffer_type
+			 || hba->dev_info.wb_config_lun));
 #else
-	return (hba->dev_info.d_ext_ufs_feature_sup &
-		UFS_DEV_WRITE_BOOSTER_SUP);
+	return ((hba->dev_info.d_ext_ufs_feature_sup &
+		   UFS_DEV_WRITE_BOOSTER_SUP) &&
+		  (hba->dev_info.b_wb_buffer_type
+		   || hba->dev_info.wb_config_lun));
 #endif
 }
 
@@ -9236,7 +9246,6 @@ static inline bool ufshcd_needs_reinit(struct ufs_hba *hba)
 
 	return reinit;
 }
-
 /**
  * ufshcd_probe_hba - probe hba to detect device and initialize
  * @hba: per-adapter instance
@@ -9426,7 +9435,6 @@ reinit:
 			hba->clk_scaling.is_allowed = true;
 			hba->clk_scaling.is_suspended = false;
 		}
-
 		scsi_scan_host(hba->host);
 #if defined(CONFIG_UFSFEATURE)
 		ufsf_device_check(hba);
@@ -9456,7 +9464,6 @@ out:
 	ufsf_hpb_reset(hba->ufsf);
 	ufsf_tw_reset(hba->ufsf);
 #endif
-
 	/*
 	 * If we failed to initialize the device or the device is not
 	 * present, turn off the power/clocks etc.
@@ -9471,6 +9478,10 @@ out:
 		ufsf_reset(hba->ufsf);
 #endif
 
+#if defined(CONFIG_UFSFEATURE_31)
+	if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		ufsf_reset(hba->ufsf);
+#endif
 	trace_ufshcd_init(dev_name(hba->dev), ret,
 		ktime_to_us(ktime_sub(ktime_get(), start)),
 		hba->curr_dev_pwr_mode, hba->uic_link_state);
@@ -9575,6 +9586,13 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 	}
 #endif
 
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
+	if (ufsf_check_query(ioctl_data->opcode)) {
+		err = ufsf_query_ioctl(hba->ufsf, lun, buffer, ioctl_data,
+				       UFSFEATURE_SELECTOR);
+		goto out_release_mem;
+	}
+#endif
 	/* verify legal parameters & send query */
 	switch (ioctl_data->opcode) {
 	case UPIU_QUERY_OPCODE_READ_DESC:
@@ -10645,7 +10663,6 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 #if defined(CONFIG_UFSFEATURE_31)
 	ufsf_suspend(hba->ufsf);
 #endif
-
 	/*
 	 * If we can't transition into any of the low power modes
 	 * just gate the clocks.
@@ -10681,7 +10698,6 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	else
 		disable_lpm = ufsf_tw_disable_lpm(hba->ufsf);
 #endif
-
 	if (ufshcd_is_runtime_pm(pm_op)) {
 		if (ufshcd_can_autobkops_during_suspend(hba)) {
 			/*
@@ -10934,7 +10950,6 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 #if defined(CONFIG_UFSFEATURE_31)
 	ufsf_resume(hba->ufsf);
 #endif
-
 	/* Set Auto-Hibernate timer if supported */
 	ufshcd_set_auto_hibern8_timer(hba);
 
@@ -11308,7 +11323,6 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	 * runtime pm.
 	 */
 	host->use_blk_mq = false;
-
 	hba = shost_priv(host);
 	hba->host = host;
 	hba->dev = dev;
@@ -11322,7 +11336,7 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 		dev_err(dev, "ufsf_feature  allocation failed\n");
 		err = -ENOMEM;
 		goto out_error;
-	}
+	}	
 	hba->ufsf = ufsf;
 #endif
 
@@ -11537,7 +11551,6 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 * ufshcd_probe_hba().
 	 */
 	ufshcd_set_ufs_dev_active(hba);
-
 	ufshcd_cmd_log_init(hba);
 
 #if defined(CONFIG_UFSFEATURE)
@@ -11569,6 +11582,13 @@ out_error:
 	return err;
 }
 EXPORT_SYMBOL_GPL(ufshcd_init);
+static int __init storage_mfrid_setup(char *str)
+{
+	storage_mfrid = simple_strtol(str, NULL, 16);
+	return 1;
+}
+__setup("storage_mfrid=",storage_mfrid_setup);
+
 static int __init storage_mfrid_setup(char *str)
 {
 	storage_mfrid = simple_strtol(str, NULL, 16);
