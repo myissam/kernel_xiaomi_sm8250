@@ -39,8 +39,6 @@
 #if defined(CONFIG_UFSFEATURE)
 #include "ufsfeature.h"
 #endif
-#include <linux/binfmts.h>
-
 #include "ufshcd.h"
 #include "ufstw.h"
 #include "ufs_quirks.h"
@@ -1378,9 +1376,6 @@ static ssize_t ufstw_sysfs_store_tw_enable(struct ufstw_lu *tw, const char *buf,
 	unsigned long val;
 	ssize_t ret = count;
 
-	if (task_is_booster(current))
-		return count;
-
 	if (kstrtoul(buf, 0, &val))
 		return -EINVAL;
 
@@ -1587,7 +1582,8 @@ static inline bool ufstw_disable_lpm_needed(struct ufstw_lu *tw)
 {
 	int ret, val = 0;
 
-	INFO_MSG("Flush hibern (%d)\n", tw->tw_flush_during_hibern_enter);
+	INFO_MSG("Flush hibern (%d)\n", __func__, __LINE__,
+			tw->tw_flush_during_hibern_enter);
 	if (!tw->tw_flush_during_hibern_enter)
 		return false;
 
@@ -1638,7 +1634,8 @@ void ufstw_disable_flush_hibern(struct ufsf_feature *ufsf)
 		if (!tw)
 			continue;
 
-		INFO_MSG("Flush hibern (%d)\n", tw->tw_flush_during_hibern_enter);
+		INFO_MSG("Flush hibern (%d)\n", __func__, __LINE__,
+				tw->tw_flush_during_hibern_enter);
 		if (!tw->tw_flush_during_hibern_enter)
 			return;
 

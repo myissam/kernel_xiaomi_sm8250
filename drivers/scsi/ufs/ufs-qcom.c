@@ -915,9 +915,9 @@ static int ufs_qcom_full_reset(struct ufs_hba *hba)
 		goto out;
 	}
 
-	reenable_intr = hba->is_irq_enabled;
-	disable_irq(hba->irq);
-	hba->is_irq_enabled = false;
+        reenable_intr = hba->is_irq_enabled;
+        disable_irq(hba->irq);
+        hba->is_irq_enabled = false;
 
 	ret = reset_control_assert(hba->core_reset);
 	if (ret) {
@@ -941,9 +941,9 @@ static int ufs_qcom_full_reset(struct ufs_hba *hba)
 	usleep_range(1000, 1100);
 
 	if (reenable_intr) {
-		enable_irq(hba->irq);
-		hba->is_irq_enabled = true;
-	}
+                enable_irq(hba->irq);
+                hba->is_irq_enabled = true;
+        }
 
 out:
 	return ret;

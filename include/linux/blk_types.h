@@ -380,6 +380,7 @@ enum req_flag_bits {
 
 #define REQ_WBT 		(1ULL << __REQ_WBT)
 
+#define REQ_HPB_PREFER          (1ULL << __REQ_HPB_PREFER)
 #define REQ_FAILFAST_MASK \
 	(REQ_FAILFAST_DEV | REQ_FAILFAST_TRANSPORT | REQ_FAILFAST_DRIVER)
 
