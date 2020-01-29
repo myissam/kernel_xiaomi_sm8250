@@ -1145,10 +1145,10 @@ struct ufs_hba {
        struct ufsf_feature *ufsf;
 #endif
 
-	ANDROID_KABI_RESERVE(1);
-	ANDROID_KABI_RESERVE(2);
-	ANDROID_KABI_RESERVE(3);
-	ANDROID_KABI_RESERVE(4);
+        ANDROID_KABI_RESERVE(1);
+        ANDROID_KABI_RESERVE(2);
+        ANDROID_KABI_RESERVE(3);
+        ANDROID_KABI_RESERVE(4);
 };
 
 static inline void ufshcd_mark_shutdown_ongoing(struct ufs_hba *hba)
@@ -1424,6 +1424,14 @@ int ufshcd_issue_tm_cmd(struct ufs_hba *hba, int lun_id, int task_id,
 			u8 tm_function, u8 *tm_response);
 #endif
 
+#if defined(CONFIG_UFSFEATURE_31)
+int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
+			enum dev_cmd_type cmd_type, int timeout);
+void ufshcd_hold_all(struct ufs_hba *hba);
+void ufshcd_release_all(struct ufs_hba *hba);
+int ufshcd_issue_tm_cmd(struct ufs_hba *hba, int lun_id, int task_id,
+			u8 tm_function, u8 *tm_response);
+#endif
 int ufshcd_hold(struct ufs_hba *hba, bool async);
 void ufshcd_release(struct ufs_hba *hba, bool no_sched);
 int ufshcd_wait_for_doorbell_clr(struct ufs_hba *hba, u64 wait_timeout_us);
