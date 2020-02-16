@@ -120,7 +120,7 @@ struct schedtune {
 	/* Hint to bias scheduling of tasks on that SchedTune CGroup
 	 * towards idle CPUs */
 	int prefer_idle;
-	
+
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	/*
 	 * This tracks the default boost value and is used to restore
@@ -164,7 +164,7 @@ root_schedtune = {
 	.colocate_update_disabled = false,
 #endif
 	.prefer_idle = 0,
-	
+
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	.boost_default = 0,
 #endif /* CONFIG_DYNAMIC_STUNE_BOOST */
@@ -730,7 +730,7 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 		return -EINVAL;
 
 	st->boost = boost;
-	
+
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	st->boost_default = boost;
 #endif /* CONFIG_DYNAMIC_STUNE_BOOST */
@@ -741,13 +741,14 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	return 0;
 }
 
-#ifdef CONFIG_STUNE_ASSIST
 #ifdef CONFIG_SCHED_WALT
 static int sched_boost_override_write_wrapper(struct cgroup_subsys_state *css,
 					      struct cftype *cft, u64 override)
 {
+#ifdef CONFIG_STUNE_ASSIST
 	if (task_is_booster(current))
 		return 0;
+#endif
 
 	return sched_boost_override_write(css, cft, override);
 }
@@ -755,18 +756,22 @@ static int sched_boost_override_write_wrapper(struct cgroup_subsys_state *css,
 static int sched_colocate_write_wrapper(struct cgroup_subsys_state *css,
 					struct cftype *cft, u64 colocate)
 {
+#ifdef CONFIG_STUNE_ASSIST
 	if (task_is_booster(current))
 		return 0;
+#endif
 
 	return sched_colocate_write(css, cft, colocate);
 }
-#endif
+#endif /* CONFIG_SCHED_WALT */
 
 static int boost_write_wrapper(struct cgroup_subsys_state *css,
 			       struct cftype *cft, s64 boost)
 {
+#ifdef CONFIG_STUNE_ASSIST
 	if (task_is_booster(current))
 		return 0;
+#endif
 
 	return boost_write(css, cft, boost);
 }
@@ -774,12 +779,13 @@ static int boost_write_wrapper(struct cgroup_subsys_state *css,
 static int prefer_idle_write_wrapper(struct cgroup_subsys_state *css,
 				     struct cftype *cft, u64 prefer_idle)
 {
+#ifdef CONFIG_STUNE_ASSIST
 	if (task_is_booster(current))
 		return 0;
+#endif
 
 	return prefer_idle_write(css, cft, prefer_idle);
 }
-#endif
 
 static struct cftype files[] = {
 #ifdef CONFIG_SCHED_WALT
