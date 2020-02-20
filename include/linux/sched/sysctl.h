@@ -32,13 +32,13 @@ extern unsigned int sysctl_sched_cstate_aware;
 extern unsigned int sysctl_sched_wakeup_granularity;
 extern unsigned int sysctl_sched_child_runs_first;
 extern unsigned int sysctl_sched_force_lb_enable;
+extern unsigned int sysctl_sched_boost;
 #ifdef CONFIG_SCHED_WALT
 extern unsigned int sysctl_sched_capacity_margin_up[MAX_MARGIN_LEVELS];
 extern unsigned int sysctl_sched_capacity_margin_down[MAX_MARGIN_LEVELS];
 extern unsigned int sysctl_sched_user_hint;
 extern const int sched_user_hint_max;
 extern unsigned int sysctl_sched_cpu_high_irqload;
-extern unsigned int sysctl_sched_boost;
 #if IS_ENABLED(CONFIG_MIHW)
 extern unsigned int sysctl_sched_boost_top_app;
 #endif
