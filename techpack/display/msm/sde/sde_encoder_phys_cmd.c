@@ -922,8 +922,7 @@ void sde_encoder_phys_cmd_irq_control(struct sde_encoder_phys *phys_enc,
 	}
 }
 
-static int _get_tearcheck_threshold(struct sde_encoder_phys *phys_enc,
-	u32 *extra_frame_trigger_time)
+static int _get_tearcheck_threshold(struct sde_encoder_phys *phys_enc)
 {
 	struct drm_connector *conn = phys_enc->connector;
 	u32 qsync_mode;
@@ -932,7 +931,6 @@ static int _get_tearcheck_threshold(struct sde_encoder_phys *phys_enc,
 	struct sde_encoder_phys_cmd *cmd_enc =
 			to_sde_encoder_phys_cmd(phys_enc);
 
-	*extra_frame_trigger_time = 0;
 	if (!conn || !conn->state)
 		return 0;
 
@@ -985,8 +983,6 @@ static int _get_tearcheck_threshold(struct sde_encoder_phys *phys_enc,
 
 		SDE_EVT32(qsync_mode, qsync_min_fps, extra_time_ns, default_fps,
 			yres, threshold_lines);
-
-		*extra_frame_trigger_time = extra_time_ns;
 	}
 
 exit:
@@ -1003,7 +999,7 @@ static void sde_encoder_phys_cmd_tearcheck_config(
 	struct sde_hw_tear_check tc_cfg = { 0 };
 	struct drm_display_mode *mode;
 	bool tc_enable = true;
-	u32 vsync_hz, extra_frame_trigger_time;
+	u32 vsync_hz;
 	struct msm_drm_private *priv;
 	struct sde_kms *sde_kms;
 
@@ -1067,8 +1063,7 @@ static void sde_encoder_phys_cmd_tearcheck_config(
 	 */
 	tc_cfg.sync_cfg_height = 0xFFF0;
 	tc_cfg.vsync_init_val = mode->vdisplay;
-	tc_cfg.sync_threshold_start = _get_tearcheck_threshold(phys_enc,
-			&extra_frame_trigger_time);
+	tc_cfg.sync_threshold_start = _get_tearcheck_threshold(phys_enc);
 	tc_cfg.sync_threshold_continue = DEFAULT_TEARCHECK_SYNC_THRESH_CONTINUE;
 	tc_cfg.start_pos = mode->vdisplay;
 	tc_cfg.rd_ptr_irq = mode->vdisplay + 1;
@@ -1376,7 +1371,6 @@ static int sde_encoder_phys_cmd_prepare_for_kickoff(
 	struct sde_encoder_phys_cmd *cmd_enc =
 			to_sde_encoder_phys_cmd(phys_enc);
 	int ret = 0;
-	u32 extra_frame_trigger_time;
 
 	if (!phys_enc || !phys_enc->hw_pp) {
 		SDE_ERROR("invalid encoder\n");
@@ -1406,9 +1400,8 @@ static int sde_encoder_phys_cmd_prepare_for_kickoff(
 	}
 
 	if (sde_connector_is_qsync_updated(phys_enc->connector)) {
-		tc_cfg.sync_threshold_start =
-			_get_tearcheck_threshold(phys_enc,
-				&extra_frame_trigger_time);
+		tc_cfg.sync_threshold_start = _get_tearcheck_threshold(
+				phys_enc);
 		if (phys_enc->has_intf_te &&
 				phys_enc->hw_intf->ops.update_tearcheck)
 			phys_enc->hw_intf->ops.update_tearcheck(
