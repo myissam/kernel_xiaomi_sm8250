@@ -21,6 +21,7 @@
 #include "msm_gem.h"
 #include "msm_kms.h"
 #include "sde_trace.h"
+#include "xiaomi_frame_stat.h"
 
 #define MULTIPLE_CONN_DETECTED(x) (x > 1)
 
@@ -533,6 +534,9 @@ static void _msm_drm_commit_work_cb(struct kthread_work *work)
 {
 	struct msm_commit *commit = container_of(work, typeof(*commit),
 						 commit_work);
+
+	start = ktime_get();
+	frame_stat_collector(0, COMMIT_START_TS);
 
 	SDE_ATRACE_BEGIN("complete_commit");
 	complete_commit(commit);
