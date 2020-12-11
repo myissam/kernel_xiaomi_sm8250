@@ -237,4 +237,6 @@ source "drivers/energy_model/Kconfig"
 
 source "drivers/millet/Kconfig"
 
+source "techpack/data/drivers/Kconfig"
+
 endmenu
