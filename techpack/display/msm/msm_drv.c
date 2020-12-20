@@ -805,6 +805,8 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 		}
 	}
 
+	irq_set_perf_affinity(platform_get_irq(pdev, 0), IRQF_PRIME_AFFINE);
+
 	drm_mode_config_reset(ddev);
 
 	ret = drm_dev_register(ddev, 0);
