@@ -792,6 +792,13 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
 		return count;
 
+	/*
+	 * Force the LITTLE CPU cluster to use the default govenor (performance)
+	 * because keeping it at its maximum frequency is best.
+	 */
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+		return count;
+
 	ret = sscanf(buf, "%15s", str_governor);
 	if (ret != 1)
 		return -EINVAL;
