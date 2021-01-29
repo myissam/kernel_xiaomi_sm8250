@@ -1393,7 +1393,6 @@ static void uclamp_fork(struct task_struct *p)
 	}
 }
 
-#ifdef CONFIG_SMP
 unsigned int uclamp_task(struct task_struct *p)
 {
 	unsigned long util;
@@ -1403,11 +1402,6 @@ unsigned int uclamp_task(struct task_struct *p)
 	util = min(util, uclamp_eff_value(p, UCLAMP_MAX));
 
 	return util;
-}
-
-bool uclamp_boosted(struct task_struct *p)
-{
-	return uclamp_eff_value(p, UCLAMP_MIN) > 0;
 }
 
 bool uclamp_latency_sensitive(struct task_struct *p)
@@ -1425,7 +1419,26 @@ bool uclamp_latency_sensitive(struct task_struct *p)
 	return false;
 #endif
 }
-#endif /* CONFIG_SMP */
+
+bool uclamp_boosted(struct task_struct *p)
+{
+#ifdef CONFIG_UCLAMP_TASK_GROUP
+	struct cgroup_subsys_state *css = task_css(p, cpuset_cgrp_id);
+	struct task_group *tg;
+
+	if (!css)
+		return false;
+
+	if (!strlen(css->cgroup->kn->name))
+		return 0;
+
+	tg = container_of(css, struct task_group, css);
+
+	return tg->boosted;
+#else
+	return false;
+#endif
+}
 
 static void uclamp_post_fork(struct task_struct *p)
 {
