@@ -3625,9 +3625,9 @@ enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state, i
 		break;
 	case TFA_STATE_INIT_CF:      /* coolflux HW access possible (~initcf) */
 								 /* Start with SBSL=0 to stay in initCF state */
-		if(!tfa->is_probus_device) {
+		if(!tfa->is_probus_device)
 			TFA_SET_BF(tfa, SBSL, 0);
-		}
+
 		/* We want to leave Wait4SrcSettings state for max2 */
 		if (tfa->tfa_family == 2)
 			TFA_SET_BF(tfa, MANSCONF, 1);
