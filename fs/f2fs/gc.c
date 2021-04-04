@@ -43,7 +43,8 @@ static inline bool should_break_gc(struct f2fs_sb_info *sbi)
 	return !is_idle(sbi, GC_TIME);
 }
 
-#define TRIGGER_RAPID_GC (!screen_on && power_supply_is_system_supplied())
+#define TRIGGER_RAPID_GC (!screen_on && power_supply_is_system_supplied() > 0)
+
 static bool screen_on = true;
 static LIST_HEAD(gc_sbi_list);
 static DEFINE_MUTEX(gc_wakelock_mutex);
