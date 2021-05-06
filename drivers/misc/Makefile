@@ -79,3 +79,4 @@ obj-$(CONFIG_QTI_XR_SMRTVWR_MISC) += qxr-stdalonevwr.o
 obj-$(CONFIG_FPR_FPC)		+= fpr_FingerprintCard/
 obj-y                           += qrc/
 obj-$(CONFIG_GPIO_TESTING_MODE)	+= gpio-testing-mode.o
+obj-$(CONFIG_MI_MEMORY_SYSFS)	+= mi-memory/
