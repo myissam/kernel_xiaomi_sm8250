@@ -233,27 +233,7 @@ struct smb5 {
 
 static struct smb_charger *__smbchg;
 
-static int __debug_mask = 0;
-
-static BLOCKING_NOTIFIER_HEAD(pen_charge_state_notifier_list);
-
-int pen_charge_state_notifier_register_client(struct notifier_block *nb)
-{
-	return blocking_notifier_chain_register(&pen_charge_state_notifier_list, nb);
-}
-EXPORT_SYMBOL(pen_charge_state_notifier_register_client);
-
-int pen_charge_state_notifier_unregister_client(struct notifier_block *nb)
-{
-	return blocking_notifier_chain_unregister(&pen_charge_state_notifier_list, nb);
-}
-EXPORT_SYMBOL(pen_charge_state_notifier_unregister_client);
-
-int pen_charge_state_notifier_call_chain(unsigned long val, void *v)
-{
-	return blocking_notifier_call_chain(&pen_charge_state_notifier_list, val, v);
-}
-EXPORT_SYMBOL(pen_charge_state_notifier_call_chain);
+static int __debug_mask = PR_MISC | PR_WLS | PR_OEM | PR_PARALLEL;
 
 static ssize_t pd_disabled_show(struct device *dev, struct device_attribute
 				*attr, char *buf)
@@ -698,6 +678,30 @@ static int smb5_parse_dt_misc(struct smb5 *chip, struct device_node *node)
 	chg->lpd_disabled = chg->lpd_disabled ||
 			of_property_read_bool(node, "qcom,lpd-disable");
 	chg->moisture_detection_enabled = !chg->lpd_disabled;
+
+	chg->use_bq_pump = of_property_read_bool(node,
+				"mi,use-bq-pump");
+
+	chg->support_second_ffc_term_current = of_property_read_bool(node,
+				"mi,support-second-ffc-term-current");
+
+	chg->support_second_ffc_term_current_diff = SECOND_FFC_TERM_CURRENT_DIFF;
+	rc = of_property_read_u32(node, "mi,support-second-ffc-term-current-diff",
+			&chg->support_second_ffc_term_current_diff);
+	if (rc < 0)
+		pr_err("read mi,support-second-ffc-term-current-diff failed\n");
+
+	chg->ext_fg = of_property_read_bool(node,
+				"qcom,support-ext-fg");
+
+	chg->ext_bbc = of_property_read_bool(node,
+				"qcom,support-ext-bbc");
+
+	chg->support_wireless = of_property_read_bool(node,
+				"qcom,support-wireless");
+
+	chg->wireless_bq = of_property_read_bool(node,
+				"mi,bq-wireless");
 
 	chg->use_bq_pump = of_property_read_bool(node,
 				"mi,use-bq-pump");
@@ -1741,9 +1745,6 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_FAKE_HVDCP3:
 		chg->fake_hvdcp3 = val->intval;
 		break;
-	case POWER_SUPPLY_PROP_MOISTURE_DETECTION_ENABLE:
-		rc = smblib_enable_moisture_detection(chg, val->intval == 1);
-		break;
 	case POWER_SUPPLY_PROP_PD_CURRENT_MAX:
 		rc = smblib_set_prop_pd_current_max(chg, val);
 		break;
@@ -1870,7 +1871,6 @@ static int smb5_usb_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ADAPTER_CC_MODE:
 	case POWER_SUPPLY_PROP_APSD_RERUN:
 	case POWER_SUPPLY_PROP_APDO_MAX:
-	case POWER_SUPPLY_PROP_MOISTURE_DETECTION_ENABLE:
 		return 1;
 	default:
 		break;
@@ -2547,29 +2547,6 @@ static int smb5_get_prop_wirless_type(struct smb_charger *chg,
 	return rc;
 }
 
-static int smb5_get_prop_reverse_pen_soc(struct smb_charger *chg,
-				union power_supply_propval *val)
-{
-	int rc = 0;
-
-	chg->idtp_psy = power_supply_get_by_name("idt");
-	if (chg->idtp_psy)
-		chg->wls_chip_psy = chg->idtp_psy;
-	else {
-		chg->wip_psy = power_supply_get_by_name("rx1619");
-		if (chg->wip_psy)
-			chg->wls_chip_psy = chg->wip_psy;
-		else
-			return -EINVAL;
-	}
-
-	if (chg->wls_chip_psy)
-		rc = power_supply_get_property(chg->wls_chip_psy,
-			POWER_SUPPLY_PROP_REVERSE_PEN_SOC, val);
-
-	return rc;
-}
-
 /*set mode of DIV 2*/
 static int smb5_set_prop_div2_mode(struct smb_charger *chg,
 				const union power_supply_propval *val)
@@ -2757,16 +2734,10 @@ static enum power_supply_property smb5_wireless_props[] = {
 	POWER_SUPPLY_PROP_SW_DISABLE_DC_EN,
 	POWER_SUPPLY_PROP_TX_ADAPTER,
 	POWER_SUPPLY_PROP_TX_MAC,
-	POWER_SUPPLY_PROP_PEN_MAC,
-	POWER_SUPPLY_PROP_REVERSE_PEN_SOC,
-	POWER_SUPPLY_PROP_BT_STATE,
-	POWER_SUPPLY_PROP_RX_CR,
-	POWER_SUPPLY_PROP_RX_CEP,
 	POWER_SUPPLY_PROP_DC_RESET,
 	POWER_SUPPLY_PROP_DIV_2_MODE,
 	POWER_SUPPLY_PROP_REVERSE_CHG_MODE,
 	POWER_SUPPLY_PROP_REVERSE_CHG_STATE,
-	POWER_SUPPLY_PROP_REVERSE_PEN_CHG_STATE,
 	POWER_SUPPLY_PROP_REVERSE_GPIO_STATE,
 	POWER_SUPPLY_PROP_AICL_ENABLE,
 	POWER_SUPPLY_PROP_OTG_STATE,
@@ -2807,27 +2778,8 @@ static int smb5_wireless_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_DIV_2_MODE:
 		rc = smb5_set_prop_div2_mode(chg, val);
 		break;
-	case POWER_SUPPLY_PROP_TX_MAC:
-		smblib_set_prop_tx_mac(chg, val);
-		break;
-	case POWER_SUPPLY_PROP_PEN_MAC:
-		smblib_set_prop_pen_mac(chg, val);
-		break;
-	case POWER_SUPPLY_PROP_RX_CR:
-		smblib_set_prop_rx_cr(chg, val);
-		break;
-	case POWER_SUPPLY_PROP_RX_CEP:
-		smblib_set_prop_rx_cep(chg, val);
-		break;
-	case POWER_SUPPLY_PROP_BT_STATE:
-		smblib_set_prop_bt_state(chg, val);
-		break;
 	case POWER_SUPPLY_PROP_REVERSE_CHG_MODE:
 		rc = smb5_set_prop_reverse_chg_mode(chg, val);
-		break;
-	case POWER_SUPPLY_PROP_REVERSE_PEN_CHG_STATE:
-		chg->reverse_pen_chg_state = val->intval;
-		pen_charge_state_notifier_call_chain(chg->reverse_pen_chg_state == 4, NULL);
 		break;
 	case POWER_SUPPLY_PROP_REVERSE_CHG_STATE:
 		chg->reverse_chg_state = val->intval;
@@ -2890,38 +2842,17 @@ static int smb5_wireless_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TX_ADAPTER:
 		smb5_get_prop_wirless_type(chg, val);
 		break;
-	case POWER_SUPPLY_PROP_REVERSE_PEN_SOC:
-		smb5_get_prop_reverse_pen_soc(chg, val);
-		break;
 	case POWER_SUPPLY_PROP_DC_RESET:
 		val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_DIV_2_MODE:
 		smb5_get_prop_div2_mode(chg, val);
 		break;
-	case POWER_SUPPLY_PROP_TX_MAC:
-		val->int64val = chg->tx_bt_mac;
-		break;
-	case POWER_SUPPLY_PROP_PEN_MAC:
-		val->int64val = chg->pen_bt_mac;
-		break;
-	case POWER_SUPPLY_PROP_RX_CR:
-		val->int64val = chg->rpp;
-		break;
-	case POWER_SUPPLY_PROP_RX_CEP:
-		val->int64val = chg->cep;
-		break;
-	case POWER_SUPPLY_PROP_BT_STATE:
-		val->intval = 0;
-		break;
 	case POWER_SUPPLY_PROP_SW_DISABLE_DC_EN:
 		val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_REVERSE_CHG_MODE:
 		smb5_get_prop_reverse_chg_mode(chg, val);
-		break;
-	case POWER_SUPPLY_PROP_REVERSE_PEN_CHG_STATE:
-		val->intval = chg->reverse_pen_chg_state;
 		break;
 	case POWER_SUPPLY_PROP_REVERSE_CHG_STATE:
 		val->intval = chg->reverse_chg_state;
@@ -2959,15 +2890,9 @@ static int smb5_wireless_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_WIRELESS_CP_EN:
 	case POWER_SUPPLY_PROP_WIRELESS_POWER_GOOD_EN:
 	case POWER_SUPPLY_PROP_SW_DISABLE_DC_EN:
-	case POWER_SUPPLY_PROP_RX_CR:
-	case POWER_SUPPLY_PROP_RX_CEP:
-	case POWER_SUPPLY_PROP_TX_MAC:
-	case POWER_SUPPLY_PROP_PEN_MAC:
-	case POWER_SUPPLY_PROP_BT_STATE:
 	case POWER_SUPPLY_PROP_DIV_2_MODE:
 	case POWER_SUPPLY_PROP_REVERSE_CHG_MODE:
 	case POWER_SUPPLY_PROP_REVERSE_CHG_STATE:
-	case POWER_SUPPLY_PROP_REVERSE_PEN_CHG_STATE:
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		return 1;
 	default:
@@ -5023,7 +4948,6 @@ static int smb5_probe(struct platform_device *pdev)
 	chg->main_fcc_max = -EINVAL;
 	chg->warm_fake_charging = false;
 	chg->fake_dc_on = false;
-	chg->moisture_detection_enabled = true;
 	mutex_init(&chg->adc_lock);
 
 	chg->regmap = dev_get_regmap(chg->dev->parent, NULL);
