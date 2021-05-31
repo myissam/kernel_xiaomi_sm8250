@@ -283,7 +283,6 @@
 #define ADAPTER_XIAOMI_PD_40W		0x0c
 #define ADAPTER_VOICE_BOX		0x0d
 #define ADAPTER_XIAOMI_PD_45W	0x0e
-#define ADAPTER_XIAOMI_PD_60W   0x0f
 #define WLDC_XIAOMI_20W_IOUT_MAX_UA	1000000
 #define WLDC_XIAOMI_30W_IOUT_MAX_UA	1500000
 #define WLDC_XIAOMI_40W_IOUT_MAX_UA	2000000
@@ -622,7 +621,7 @@ static int smb1398_div2_cp_get_irq_status(
 			POWER_SUPPLY_PROP_ADAPTER_CC_MODE,
 			&pval);
 	if (rc < 0) {
-		dev_err(chip->dev, "Get ADAPTER_CC_MODE failed, rc=%d\n", rc);
+		dev_err(chip->dev, "Get ADAPTER_CC_MODE failed, rc=%d\n");
 		return rc;
 	}
 	if (pval.intval)
@@ -1355,7 +1354,7 @@ static bool is_vbus_ok_for_passthrough(struct smb1398_chip *chip)
 			POWER_SUPPLY_PROP_VOLTAGE_NOW,
 			&pval);
 	if (rc < 0) {
-		dev_err(chip->dev, "Get USB VOLTAGE_NOW failed, rc=%d\n", rc);
+		dev_err(chip->dev, "Get USB VOLTAGE_NOW failed, rc=%d\n");
 		return false;
 	}
 	vbus_uv = pval.intval;
@@ -1372,14 +1371,14 @@ static bool is_vbus_ok_for_passthrough(struct smb1398_chip *chip)
 			POWER_SUPPLY_PROP_VOLTAGE_NOW,
 			&pval);
 	if (rc < 0) {
-		dev_err(chip->dev, "Get BATT VOLTAGE_NOW failed, rc=%d\n", rc);
+		dev_err(chip->dev, "Get BATT VOLTAGE_NOW failed, rc=%d\n");
 		return false;
 	}
 
 	vbat_uv = pval.intval;
 
 	vbus_ok = (vbus_uv + 100000) > vbat_uv ? true : false;
-	dev_dbg(chip->dev, "vbat_uv=%ld, vbus_uv:%ld, vbus_ok:%d\n", vbat_uv, vbus_uv, vbus_ok);
+	dev_dbg(chip->dev, "vbat_uv=%d, vbus_uv:%d, vbus_ok:%d\n", vbat_uv, vbus_uv, vbus_ok);
 
 	return vbus_ok;
 }
@@ -1815,7 +1814,7 @@ static bool is_adapter_in_cc_mode(struct smb1398_chip *chip)
 			POWER_SUPPLY_PROP_ADAPTER_CC_MODE,
 			&pval);
 	if (rc < 0) {
-		dev_err(chip->dev, "Get ADAPTER_CC_MODE failed, rc=%d\n", rc);
+		dev_err(chip->dev, "Get ADAPTER_CC_MODE failed, rc=%d\n");
 		return rc;
 	}
 
@@ -2212,7 +2211,7 @@ static irqreturn_t default_irq_handler(int irq, void *data)
 			POWER_SUPPLY_PROP_ADAPTER_CC_MODE,
 			&pval);
 	if (rc < 0) {
-		dev_err(chip->dev, "Get ADAPTER_CC_MODE failed, rc=%d\n", rc);
+		dev_err(chip->dev, "Get ADAPTER_CC_MODE failed, rc=%d\n");
 		return IRQ_HANDLED;
 	}
 
@@ -2384,8 +2383,7 @@ static int smb1398_get_wls_charging_icl(struct smb1398_chip *chip, int *effectiv
 	} else if ((tx_adapter_type == ADAPTER_XIAOMI_PD_40W)
 			|| (tx_adapter_type == ADAPTER_VOICE_BOX)) {
 		*effectiveIcl = WLDC_XIAOMI_30W_IOUT_MAX_UA;
-	} else if (tx_adapter_type == ADAPTER_XIAOMI_PD_45W ||
-			tx_adapter_type == ADAPTER_XIAOMI_PD_60W) {
+	} else if (tx_adapter_type == ADAPTER_XIAOMI_PD_45W) {
 		*effectiveIcl = WLDC_XIAOMI_50W_IOUT_MAX_UA;
 	} else {
 		dev_err(chip->dev, "Get Main tx_adapter_type failed, tx_adapter_type=%d\n",
@@ -2657,7 +2655,7 @@ static void smb1398_isns_process_work(struct work_struct *work)
 				if (chip->isns_cnt++ >= WLS_MAIN_START_ILIM_CNT) {
 					vote(chip->div2_cp_ilim_votable, WIRELESS_CP_OPEN_VOTER, false, 0);
 					smb1398_charge_get_wireless_adapter_type(chip, &tx_adapter_type);
-					if (tx_adapter_type == ADAPTER_XIAOMI_PD_45W ||tx_adapter_type == ADAPTER_XIAOMI_PD_60W) {
+					if (tx_adapter_type == ADAPTER_XIAOMI_PD_45W) {
 						chip->max_power_cnt = 0;
 						if (!chip->rx_ocp_disable_votable)
 							chip->rx_ocp_disable_votable = find_votable("IDTP_OCP_DISABLE");
@@ -2804,7 +2802,7 @@ static void smb1398_irev_process_work(struct work_struct *work)
 				POWER_SUPPLY_PROP_VOLTAGE_NOW,
 				&pval);
 		if (rc < 0) {
-			dev_err(chip->dev, "Get USB VOLTAGE_NOW failed, rc=%d\n", rc);
+			dev_err(chip->dev, "Get USB VOLTAGE_NOW failed, rc=%d\n");
 			return;
 		}
 
@@ -2819,12 +2817,12 @@ static void smb1398_irev_process_work(struct work_struct *work)
 				POWER_SUPPLY_PROP_VOLTAGE_NOW,
 				&pval);
 		if (rc < 0) {
-			dev_err(chip->dev, "Get BATT VOLTAGE_NOW failed, rc=%d\n", rc);
+			dev_err(chip->dev, "Get BATT VOLTAGE_NOW failed, rc=%d\n");
 			return;
 		}
 
 		vbat_uv = pval.intval;
-		dev_err(chip->dev, "vbat_uv=%ld, vbus_uv:%ld, rx_off:%d\n", vbat_uv, vbus_uv, rx_off);
+		dev_err(chip->dev, "vbat_uv=%d, vbus_uv:%d, rx_off:%d\n", vbat_uv, vbus_uv, rx_off);
 		if (vbus_uv > 0) {
 			rx_off = vbus_uv < vbat_uv ? true : false;
 		}
@@ -3751,7 +3749,7 @@ static int smb1398_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, chip);
 
 	chip->standalone_mode = true;
-	chip->div2_cp_role = (uintptr_t)of_device_get_match_data(chip->dev);
+	chip->div2_cp_role = (int)of_device_get_match_data(chip->dev);
 	switch (chip->div2_cp_role) {
 	case DIV2_CP_MASTER:
 		rc = smb1398_div2_cp_master_probe(chip);
