@@ -548,24 +548,11 @@ static void complete_commit(struct msm_commit *c)
 
 static void _msm_drm_commit_work_cb(struct kthread_work *work)
 {
-	struct msm_commit *commit = NULL;
+	struct msm_commit *c = container_of(work, typeof(*c), commit_work);
 	struct pm_qos_request req = {
 		.type = PM_QOS_REQ_AFFINE_CORES,
-		.cpus_affine = ATOMIC_INIT(BIT(raw_smp_processor_id()))
+		.cpus_affine = BIT(raw_smp_processor_id())
 	};
-
-	ktime_t start, end;
-	s64 duration;
-
-	if (!work) {
-		DRM_ERROR("%s: Invalid commit work data!\n", __func__);
-		return;
-	}
-
-	commit = container_of(work, struct msm_commit, commit_work);
-
-	start = ktime_get();
-	frame_stat_collector(0, COMMIT_START_TS);
 
 	/*
 	 * Optimistically assume the current task won't migrate to another CPU
@@ -577,10 +564,6 @@ static void _msm_drm_commit_work_cb(struct kthread_work *work)
 	complete_commit(commit);
 	SDE_ATRACE_END("complete_commit");
 	pm_qos_remove_request(&req);
-
-	end = ktime_get();
-	duration = ktime_to_ns(ktime_sub(end, start));
-	frame_stat_collector(duration, COMMIT_END_TS);
 }
 
 static struct msm_commit *commit_init(struct drm_atomic_state *state,
