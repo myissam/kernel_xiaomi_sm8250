@@ -82,6 +82,7 @@ static LIST_HEAD(formats);
 static DEFINE_RWLOCK(binfmt_lock);
 
 #define HWDISPLAY_BIN_PREFIX "/vendor/bin/hw/vendor.qti.hardware.display"
+#define SURFACEFLINGER_BIN_PREFIX "/system/bin/surfaceflinger"
 #define ZYGOTE32_BIN "/system/bin/app_process32"
 #define ZYGOTE64_BIN "/system/bin/app_process64"
 static struct signal_struct *zygote32_sig;
@@ -1874,6 +1875,11 @@ static int __do_execve_file(int fd, struct filename *filename,
 		else if (unlikely(!strncmp(filename->name,
 					   HWDISPLAY_BIN_PREFIX,
 					   strlen(HWDISPLAY_BIN_PREFIX)))) {
+			current->flags |= PF_PERF_CRITICAL;
+			set_cpus_allowed_ptr(current, cpu_prime_mask);
+		} else if (unlikely(!strncmp(filename->name,
+					   SURFACEFLINGER_BIN_PREFIX,
+					   strlen(SURFACEFLINGER_BIN_PREFIX)))) {
 			current->flags |= PF_PERF_CRITICAL;
 			set_cpus_allowed_ptr(current, cpu_perf_mask);
 		}
