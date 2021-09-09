@@ -5087,6 +5087,13 @@ void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error)
 		mutex_unlock(&dsi_display->panel->panel_lock);
 	}
 
+	if (dsi_display && dsi_display->panel
+		&& dsi_display->panel->host_config.phy_type == DSI_PHY_TYPE_CPHY
+		&& adj_mode.dsi_mode_flags & DSI_MODE_FLAG_VRR) {
+		dsi_panel_match_fps_pen_setting(dsi_display->panel, &adj_mode);
+		mutex_unlock(&dsi_display->panel->panel_lock);
+	}
+
 	SDE_ATRACE_END("encoder_kickoff");
 }
 
