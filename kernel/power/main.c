@@ -693,7 +693,7 @@ static ssize_t sum_wakeup_time_show(struct kobject *kobj, struct kobj_attribute 
 static ssize_t sum_wakeup_time_store(struct kobject *kobj, struct kobj_attribute *attr,
 			   const char *buf, size_t n)
 {
-	int error;
+	int error = 0;
 	return error ? error : n;
 }
 
@@ -708,7 +708,7 @@ static ssize_t last_wake_time_show(struct kobject *kobj, struct kobj_attribute *
 static ssize_t last_wake_time_store(struct kobject *kobj, struct kobj_attribute *attr,
 			   const char *buf, size_t n)
 {
-	int error;
+	int error = 0;
 	return error ? error : n;
 }
 
@@ -723,7 +723,7 @@ static ssize_t wake_times_show(struct kobject *kobj, struct kobj_attribute *attr
 static ssize_t wake_times_store(struct kobject *kobj, struct kobj_attribute *attr,
 			   const char *buf, size_t n)
 {
-	int error;
+	int error = 0;
 	return error ? error : n;
 }
 
