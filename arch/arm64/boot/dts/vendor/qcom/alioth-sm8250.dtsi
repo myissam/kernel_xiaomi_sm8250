@@ -641,8 +641,6 @@ this file is for attribution only of alioth
 	qcom,ki-coeff-chg-low-med-thresh-ma = <500>;
 	qcom,ffc-ki-coeff-chg-med-hi-thresh-ma = <3900>;
 	qcom,ffc-ki-coeff-chg-low-med-thresh-ma = <3500>;
-	//qcom,fg-increase-100soc-time;
-	qcom,fg-increase-100soc-time-2;
 	qcom,shutdown-delay-enable;
 };
 
