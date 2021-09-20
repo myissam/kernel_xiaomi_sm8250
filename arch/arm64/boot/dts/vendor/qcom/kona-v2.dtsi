@@ -7,23 +7,23 @@
 };
 
 &CPU0 {
-	capacity-dmips-mhz = <418>;
-	dynamic-power-coefficient = <374>;
+	capacity-dmips-mhz = <448>;
+	dynamic-power-coefficient = <49>;
 };
 
 &CPU1 {
-	capacity-dmips-mhz = <418>;
-	dynamic-power-coefficient = <374>;
+	capacity-dmips-mhz = <448>;
+	dynamic-power-coefficient = <49>;
 };
 
 &CPU2 {
-	capacity-dmips-mhz = <418>;
-	dynamic-power-coefficient = <374>;
+	capacity-dmips-mhz = <448>;
+	dynamic-power-coefficient = <49>;
 };
 
 &CPU3 {
-	capacity-dmips-mhz = <418>;
-	dynamic-power-coefficient = <374>;
+	capacity-dmips-mhz = <448>;
+	dynamic-power-coefficient = <49>;
 };
 
 &CPU4 {
