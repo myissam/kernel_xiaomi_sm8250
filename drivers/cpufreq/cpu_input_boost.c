@@ -75,6 +75,10 @@ enum {
 	MAX_BOOST
 };
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+static int boost_slot[3];
+#endif
+
 struct boost_drv {
 	struct delayed_work input_unboost;
 	struct delayed_work max_unboost;
@@ -147,7 +151,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	set_bit(INPUT_BOOST, &b->state);
 
 	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	do_stune_boost("top-app", dynamic_stune_boost);
+		do_stune_sched_boost(&boost_slot[1]);
 	#endif
 
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
@@ -171,9 +175,9 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
-	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	do_stune_boost("top-app", dynamic_stune_boost);
-	#endif
+		#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+			do_stune_sched_boost(&boost_slot[2]);
+		#endif
 
 	do {
 		curr_expires = atomic_long_read(&b->max_boost_expires);
@@ -207,7 +211,7 @@ static void input_unboost_worker(struct work_struct *work)
 	wake_up(&b->boost_waitq);
 
 	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	reset_stune_boost("top-app");
+		reset_stune_boost(boost_slot[1]);
 	#endif
 }
 
@@ -220,7 +224,7 @@ static void max_unboost_worker(struct work_struct *work)
 	wake_up(&b->boost_waitq);
 
 	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	reset_stune_boost("top-app");
+		reset_stune_boost(boost_slot[2]);
 	#endif
 }
 
@@ -390,7 +394,7 @@ free_handle:
 static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
 	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	reset_stune_boost("top-app");
+		reset_stune_boost(boost_slot[3]);
 	#endif
 
 	input_close_device(handle);
