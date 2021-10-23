@@ -406,6 +406,7 @@ static int __init cpu_input_boost_init(void)
 	int ret;
 
 	b->cpu_notif.notifier_call = cpu_notifier_cb;
+	b->cpu_notif.priority = INT_MAX - 1;
 	ret = cpufreq_register_notifier(&b->cpu_notif, CPUFREQ_POLICY_NOTIFIER);
 	if (ret) {
 		pr_err("Failed to register cpufreq notifier, err: %d\n", ret);
@@ -420,7 +421,7 @@ static int __init cpu_input_boost_init(void)
 	}
 
 	b->mi_drm_notif.notifier_call = mi_drm_notifier_cb;
-	b->mi_drm_notif.priority = INT_MAX;
+	b->mi_drm_notif.priority = INT_MAX - 1;
 	ret = mi_drm_register_client(&b->mi_drm_notif);
 	if (ret) {
 		pr_err("Failed to register msm_drm notifier, err: %d\n", ret);
