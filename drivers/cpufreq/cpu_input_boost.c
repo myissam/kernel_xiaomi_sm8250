@@ -294,7 +294,6 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 	if (test_bit(SCREEN_OFF, &b->state)) {
 		policy->min = read_min_freq(policy);
 		boosting = false;
-		sched_set_boost(0);
 		return NOTIFY_OK;
 	}
 
@@ -309,7 +308,6 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 	/* Boost CPU for input boost */
 	if (test_bit(INPUT_BOOST, &b->state)) {
 		store_min_freq(policy);
-		sched_set_boost(2);
 		policy->min = get_input_boost_freq(policy);
 		boosting = true;
 		return NOTIFY_OK;
@@ -317,7 +315,6 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	if (boosting) {
 		policy->min = read_min_freq(policy);
-		sched_set_boost(0);
 		boosting = false;
 	}
 	return NOTIFY_OK;
@@ -336,13 +333,11 @@ static int mi_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Boost when the screen turns on and unboost when it turns off */
 	if (*blank == MI_DRM_BLANK_UNBLANK) {
-		sched_set_boost(2);
 		clear_bit(SCREEN_OFF, &b->state);
 		__cpu_input_boost_kick_max(b, wake_boost_duration);
 	} else {
 		set_bit(SCREEN_OFF, &b->state);
 		wake_up(&b->boost_waitq);
-		sched_set_boost(0);
 	}
 
 	return NOTIFY_OK;
