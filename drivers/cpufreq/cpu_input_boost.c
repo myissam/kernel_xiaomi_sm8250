@@ -66,9 +66,6 @@ module_param(wake_boost_duration, short, 0644);
 
 module_param(dynamic_stune_boost, short, 0644);
 
-unsigned long last_input_time;
-
-
 enum {
 	SCREEN_OFF,
 	INPUT_BOOST,
@@ -351,7 +348,6 @@ static void cpu_input_boost_input_event(struct input_handle *handle,
 
 	__cpu_input_boost_kick(b);
 
-	last_input_time = jiffies;
 }
 
 static int cpu_input_boost_input_connect(struct input_handler *handler,
