@@ -12,6 +12,7 @@
 #include <linux/moduleparam.h>
 #include <drm/drm_notifier_mi.h>
 #include <linux/slab.h>
+#include <linux/sched.h>
 #include <linux/version.h>
 
 /* The sched_param struct is located elsewhere in newer kernels */
@@ -73,7 +74,7 @@ enum {
 };
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
-static int boost_slot[3];
+	static int boost_slot;
 #endif
 
 struct boost_drv {
@@ -148,7 +149,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	set_bit(INPUT_BOOST, &b->state);
 
 	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		do_stune_sched_boost(&boost_slot[1]);
+		do_stune_boost(dynamic_stune_boost, &boost_slot);
 	#endif
 
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
@@ -172,9 +173,9 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
-		#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-			do_stune_sched_boost(&boost_slot[2]);
-		#endif
+	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+		do_stune_boost(dynamic_stune_boost, &boost_slot);
+	#endif
 
 	do {
 		curr_expires = atomic_long_read(&b->max_boost_expires);
@@ -208,7 +209,7 @@ static void input_unboost_worker(struct work_struct *work)
 	wake_up(&b->boost_waitq);
 
 	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		reset_stune_boost(boost_slot[1]);
+		reset_stune_boost(boost_slot);
 	#endif
 }
 
@@ -221,7 +222,7 @@ static void max_unboost_worker(struct work_struct *work)
 	wake_up(&b->boost_waitq);
 
 	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		reset_stune_boost(boost_slot[2]);
+		reset_stune_boost(boost_slot);
 	#endif
 }
 
@@ -330,9 +331,15 @@ static int mi_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Boost when the screen turns on and unboost when it turns off */
 	if (*blank == MI_DRM_BLANK_UNBLANK) {
+		#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+			do_stune_boost(dynamic_stune_boost, &boost_slot);
+		#endif
 		clear_bit(SCREEN_OFF, &b->state);
 		__cpu_input_boost_kick_max(b, wake_boost_duration);
 	} else {
+		#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+			reset_stune_boost(boost_slot);
+		#endif
 		set_bit(SCREEN_OFF, &b->state);
 		wake_up(&b->boost_waitq);
 	}
@@ -385,7 +392,7 @@ free_handle:
 static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
 	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		reset_stune_boost(boost_slot[3]);
+		reset_stune_boost(boost_slot);
 	#endif
 
 	input_close_device(handle);
