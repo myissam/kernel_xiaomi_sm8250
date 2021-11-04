@@ -661,19 +661,9 @@ static inline void cfqg_put(struct cfq_group *cfqg)
 	return blkg_put(cfqg_to_blkg(cfqg));
 }
 
-#define cfq_log_cfqq(cfqd, cfqq, fmt, args...)	do {			\
-	blk_add_cgroup_trace_msg((cfqd)->queue,				\
-			cfqg_to_blkg((cfqq)->cfqg)->blkcg,		\
-			"cfq%d%c%c " fmt, (cfqq)->pid,			\
-			cfq_cfqq_sync((cfqq)) ? 'S' : 'A',		\
-			cfqq_type((cfqq)) == SYNC_NOIDLE_WORKLOAD ? 'N' : ' ',\
-			  ##args);					\
-} while (0)
+#define cfq_log_cfqq(cfqd, cfqq, fmt, args...)	do {} while (0)
 
-#define cfq_log_cfqg(cfqd, cfqg, fmt, args...)	do {			\
-	blk_add_cgroup_trace_msg((cfqd)->queue,				\
-			cfqg_to_blkg(cfqg)->blkcg, fmt, ##args);	\
-} while (0)
+#define cfq_log_cfqg(cfqd, cfqg, fmt, args...)	do {} while (0)
 
 static inline void cfqg_stats_update_io_add(struct cfq_group *cfqg,
 					    struct cfq_group *curr_cfqg,
@@ -1930,7 +1920,7 @@ static int cfq_set_group_idle(struct cgroup_subsys_state *css,
 	struct cfq_group_data *cfqgd;
 	struct blkcg_gq *blkg;
 	int ret = 0;
-	
+
 	if (task_is_booster(current))
 		return ret;
 
