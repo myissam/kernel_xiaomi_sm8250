@@ -56,7 +56,7 @@ static inline void percpu_down_read(struct percpu_rw_semaphore *sem)
 	 * cannot both change sem->state from readers_fast and start checking
 	 * counters while we are here. So if we see !sem->state, we know that
 	 * the writer won't be checking until we're past the preempt_enable()
-	 * and that one the synchronize_sched() is done, the writer will see
+	 * and that one the synchronize_rcu() is done, the writer will see
 	 * anything we did within this RCU-sched read-size critical section.
 	 */
 	if (likely(rcu_sync_is_idle(&sem->rss)))
