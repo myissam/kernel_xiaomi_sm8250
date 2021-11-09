@@ -468,6 +468,7 @@
 
 &dsi_sw43404_amoled_cmd {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,ulps-enabled;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <1023>;
@@ -479,6 +480,7 @@
 
 &dsi_sw43404_amoled_video {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,ulps-enabled;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <1023>;
@@ -489,6 +491,7 @@
 
 &dsi_sw43404_amoled_fhd_plus_cmd {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,ulps-enabled;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <1023>;
@@ -652,6 +655,7 @@
 
 &dsi_k11a_38_08_0a_dsc_cmd {
         qcom,panel-supply-entries = <&dsi_panel_k11a_pwr_supply_vci>;
+				qcom,ulps-enabled;
         qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
         qcom,mdss-dsi-bl-min-level = <1>;
         qcom,mdss-dsi-bl-max-level = <2047>;
