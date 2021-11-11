@@ -436,8 +436,10 @@ LINUXINCLUDE    := \
 
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-		   -fno-strict-aliasing -fno-common -fshort-wchar \
-		   -Werror-implicit-function-declaration -Werror=return-type -Wno-unused-but-set-variable \
+		   -fno-strict-aliasing -fno-common -fshort-wchar -Wno-align-mismatch \
+        -mcpu=cortex-a55 -fdiagnostics-color=always -pipe \
+		   -Werror-implicit-function-declaration -Werror=return-type \
+			 -Wno-misleading-indentation -Wno-unused-function -Wno-bool-operation \
 		   -Wno-format-security -Wno-unsequenced -Wno-void-pointer-to-int-cast -Wno-unused-variable -Wno-pointer-to-int-cast -Wno-pointer-to-enum-cast \
 		   -Wno-fortify-source -Wno-strlcpy-strlcat-size \
 		   -std=gnu89
