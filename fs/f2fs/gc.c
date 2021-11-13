@@ -75,6 +75,7 @@ static int gc_thread_func(void *data)
 {
 	struct f2fs_sb_info *sbi = data;
 	struct f2fs_gc_kthread *gc_th = sbi->gc_thread;
+	wait_queue_head_t *wq = &sbi->gc_thread->gc_wait_queue_head;
 	wait_queue_head_t *fggc_wq = &sbi->gc_thread->fggc_wq;
 	unsigned int gc_count, i;
 	bool boost;
@@ -99,7 +100,7 @@ static int gc_thread_func(void *data)
 			rapid_gc_set_wakelock();
 			// Use 1 instead of 0 to allow thread interrupts
 			wait_ms = 1;
-			sbi->gc_mode = GC_URGENT;
+			sbi->gc_mode = GC_URGENT_HIGH;
 		} else {
 			rapid_gc_set_wakelock();
 			wait_ms = gc_th->min_sleep_time;
@@ -150,7 +151,7 @@ static int gc_thread_func(void *data)
 		 * invalidated soon after by user update or deletion.
 		 * So, I'd like to wait some time to collect dirty segments.
 		 */
-		if (sbi->gc_mode == GC_URGENT || sbi->rapid_gc) {
+		if (sbi->gc_mode == GC_URGENT_HIGH || sbi->rapid_gc) {
 			if (!sbi->rapid_gc)
 				wait_ms = gc_th->urgent_sleep_time;
 			down_write(&sbi->gc_lock);
@@ -203,7 +204,7 @@ do_gc:
 				sync_mode = false;
 
 			/* if return value is not zero, no victim was selected */
-			if (f2fs_gc(sbi, sbi->rapid_gc || sync_mode, true, NULL_SEGNO)) {
+			if (f2fs_gc(sbi, sbi->rapid_gc || sync_mode, !foreground, false, NULL_SEGNO)) {
 				wait_ms = gc_th->no_gc_sleep_time;
 				sbi->rapid_gc = false;
 				rapid_gc_set_wakelock();
@@ -264,6 +265,7 @@ int f2fs_start_gc_thread(struct f2fs_sb_info *sbi)
 	gc_th->gc_wake = 0;
 
 	sbi->gc_thread = gc_th;
+	init_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);
 	init_waitqueue_head(&sbi->gc_thread->fggc_wq);
 	sbi->gc_thread->f2fs_gc_task = kthread_run(gc_thread_func, sbi,
 			"f2fs_gc-%u:%u", MAJOR(dev), MINOR(dev));
@@ -309,6 +311,7 @@ static void f2fs_start_rapid_gc(void)
 			RAPID_GC_LIMIT_INVALID_BLOCK) / 100)) {
 			f2fs_start_gc_thread(sbi);
 			sbi->gc_thread->gc_wake = 1;
+			wake_up_interruptible_all(&sbi->gc_thread->gc_wait_queue_head);
 			wake_up_interruptible_all(&sbi->gc_thread->fggc_wq);
 			wake_up_discard_thread(sbi, true);
 		} else {
