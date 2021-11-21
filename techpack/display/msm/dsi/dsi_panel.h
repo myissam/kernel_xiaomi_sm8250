@@ -240,10 +240,8 @@ struct dsi_panel {
 
 	struct brightness_alpha_pair *fod_dim_lut;
 	u32 fod_dim_lut_count;
-
-#ifdef CONFIG_EXPOSURE_ADJUSTMENT
 	bool resend_ea;
-#endif
+	bool resend_ea_hbm;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
