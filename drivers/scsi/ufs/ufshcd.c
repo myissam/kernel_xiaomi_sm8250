@@ -8784,19 +8784,17 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 	model_index = desc_buf[DEVICE_DESC_PARAM_PRDCT_NAME];
 
 
-	/* Enable WB only for UFS-3.1 OR if desc len >= 0x59 */
-	if ((dev_desc->wspecversion >= 0x310) ||
-	    (dev_desc->wmanufacturerid == UFS_VENDOR_TOSHIBA &&
-	     dev_desc->wspecversion >= 0x300 &&
-	     hba->desc_size.dev_desc >= 0x59))
-		hba->dev_info.d_ext_ufs_feature_sup =
-			desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP]
-								<< 24 |
-			desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP + 1]
-								<< 16 |
-			desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP + 2]
-								<< 8 |
-			desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP + 3];
+	/* Enable WB only for UFS-3.1 or UFS-2.2 OR if desc len >= 0x59 */
+	if (0) {
+			hba->dev_info.d_ext_ufs_feature_sup =
+				desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP]
+									<< 24 |
+				desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP + 1]
+									<< 16 |
+				desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP + 2]
+									<< 8 |
+				desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP + 3];
+		}
 
 	/* Zero-pad entire buffer for string termination. */
 	memset(desc_buf, 0, buff_len);
@@ -8817,9 +8815,9 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 	/* Null terminate the model string */
 	dev_desc->model[MAX_MODEL_LEN] = '\0';
 
-out:
-	kfree(desc_buf);
-	return err;
+	out:
+		kfree(desc_buf);
+		return err;
 }
 
 static void ufs_fixup_device_setup(struct ufs_hba *hba,
