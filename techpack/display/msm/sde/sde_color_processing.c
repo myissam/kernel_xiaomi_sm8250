@@ -1701,7 +1701,8 @@ static int sde_cp_crtc_set_pu_features(struct drm_crtc *crtc, bool *need_flush)
 	memset(&hw_cfg, 0, sizeof(hw_cfg));
 	hw_cfg.num_of_mixers = sde_crtc->num_mixers;
 	hw_cfg.broadcast_disabled = catalog->dma_cfg.broadcast_disabled;
-	hw_cfg.payload = &sde_crtc_state->user_roi_list;
+	hw_cfg.payload = (sde_crtc_state->user_roi_list.num_rects) ?
+		&sde_crtc_state->user_roi_list : NULL;
 	hw_cfg.len = sizeof(sde_crtc_state->user_roi_list);
 	for (i = 0; i < hw_cfg.num_of_mixers; i++)
 		hw_cfg.dspp[i] = sde_crtc->mixers[i].hw_dspp;
@@ -2168,6 +2169,7 @@ void sde_cp_crtc_clear(struct drm_crtc *crtc)
 	list_del_init(&sde_crtc->dirty_list);
 	list_del_init(&sde_crtc->ad_active);
 	list_del_init(&sde_crtc->ad_dirty);
+	sde_crtc->cp_pu_feature_mask = 0;
 	mutex_unlock(&sde_crtc->crtc_cp_lock);
 
 	spin_lock_irqsave(&sde_crtc->spin_lock, flags);
