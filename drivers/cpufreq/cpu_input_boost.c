@@ -27,7 +27,7 @@ enum {
 };
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
-static unsigned short dynamic_stune_boost __read_mostly = 1;
+static unsigned short dynamic_stune_boost __read_mostly = 2;
 module_param(dynamic_stune_boost, short, 0644);
 static bool stune_boost_active;
 static int boost_slot;
@@ -236,13 +236,13 @@ static void max_unboost_worker(struct work_struct *work)
 
 static int cpu_boost_thread(void *data)
 {
-	static const struct sched_param sched_max_rt_prio = {
-		.sched_priority = MAX_RT_PRIO - 1
+	static const struct sched_param param = {
+		.sched_priority = 3
 	};
 	struct boost_drv *b = data;
 	unsigned long old_state = 0;
 
-	sched_setscheduler_nocheck(current, SCHED_FIFO, &sched_max_rt_prio);
+	sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
 
 	while (1) {
 		bool should_stop = false;
