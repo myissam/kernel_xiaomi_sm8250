@@ -27,8 +27,12 @@ enum {
 };
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
-static unsigned short dynamic_stune_boost __read_mostly = 2;
+static unsigned short dynamic_stune_boost __read_mostly = 1;
 module_param(dynamic_stune_boost, short, 0644);
+static unsigned short dynamic_stune_boost_input_ms __read_mostly = 58;
+module_param(dynamic_stune_boost_input_ms, short, 0644);
+static unsigned short dynamic_stune_boost_max_ms __read_mostly = 500;
+module_param(dynamic_stune_boost_max_ms, short, 0644);
 static bool stune_boost_active;
 static int boost_slot;
 #endif
@@ -36,6 +40,10 @@ static int boost_slot;
 struct boost_drv {
 	struct delayed_work input_unboost;
 	struct delayed_work max_unboost;
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	struct delayed_work dynamic_stune_boost_input_rem;
+	struct delayed_work dynamic_stune_boost_max_rem;
+#endif
 	struct notifier_block cpu_notif;
 	struct notifier_block mi_drm_notif;
 	wait_queue_head_t boost_waitq;
@@ -45,10 +53,20 @@ struct boost_drv {
 
 static void input_unboost_worker(struct work_struct *work);
 static void max_unboost_worker(struct work_struct *work);
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+static void do_dynamic_stune_boost_input_rem(struct work_struct *work);
+static void do_dynamic_stune_boost_max_rem(struct work_struct *work);
+#endif
 
 static struct boost_drv boost_drv_g __read_mostly = {
 	.input_unboost = __DELAYED_WORK_INITIALIZER(boost_drv_g.input_unboost,
 						    input_unboost_worker, 0),
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	.dynamic_stune_boost_input_rem = __DELAYED_WORK_INITIALIZER(boost_drv_g.dynamic_stune_boost_input_rem,
+						    do_dynamic_stune_boost_input_rem, 0),
+	.dynamic_stune_boost_max_rem = __DELAYED_WORK_INITIALIZER(boost_drv_g.dynamic_stune_boost_max_rem,
+								do_dynamic_stune_boost_max_rem, 0),
+#endif
 	.max_unboost = __DELAYED_WORK_INITIALIZER(boost_drv_g.max_unboost,
 						  max_unboost_worker, 0),
 	.boost_waitq = __WAIT_QUEUE_HEAD_INITIALIZER(boost_drv_g.boost_waitq)
@@ -94,27 +112,16 @@ static unsigned int get_idle_freq(struct cpufreq_policy *policy)
 	return max(freq, policy->cpuinfo.min_freq);
 }
 
-static unsigned int min_freq[3];
-
-static void store_min_freq(struct cpufreq_policy *policy)
-{
-	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
-		min_freq[0] = CONFIG_CPU_FREQ_MIN_LP;
-	} else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
-		min_freq[1] = CONFIG_CPU_FREQ_MIN_PERF;
-	} else {
-		min_freq[2] = CONFIG_CPU_FREQ_MIN_PRIME;
-	}
-}
-
 static unsigned int read_min_freq(struct cpufreq_policy *policy)
 {
+	unsigned int freq;
+
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
-		return min_freq[0];
+		return freq = CONFIG_CPU_FREQ_MIN_LP;
 	} else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
-		return min_freq[1];
+		return freq = CONFIG_CPU_FREQ_MIN_PERF;
 	} else {
-		return min_freq[2];
+		return freq = CONFIG_CPU_FREQ_MIN_PRIME;
 	}
 }
 
@@ -140,10 +147,12 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 
 	set_bit(INPUT_BOOST, &b->state);
 
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	if(!do_stune_boost(dynamic_stune_boost, &boost_slot))
+	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+		if(!do_stune_boost(dynamic_stune_boost, &boost_slot))
 			stune_boost_active = true;
-#endif
+		mod_delayed_work(system_unbound_wq, &b->dynamic_stune_boost_input_rem,
+			msecs_to_jiffies(dynamic_stune_boost_input_ms));
+	#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
 			      msecs_to_jiffies(CONFIG_INPUT_BOOST_DURATION_MS)))
@@ -185,8 +194,10 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	if(!do_stune_boost(dynamic_stune_boost, &boost_slot))
-			stune_boost_active = true;
-#endif
+		stune_boost_active = true;
+	mod_delayed_work(system_unbound_wq, &b->dynamic_stune_boost_max_rem,
+		msecs_to_jiffies(dynamic_stune_boost_max_ms));
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 	if (!mod_delayed_work(system_unbound_wq, &b->max_unboost,
 			      boost_jiffies))
@@ -200,19 +211,40 @@ void cpu_input_boost_kick_max(unsigned int duration_ms)
 	__cpu_input_boost_kick_max(b, duration_ms);
 }
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+static void do_dynamic_stune_boost_input_rem(struct work_struct *work)
+{
+	struct boost_drv *b = container_of(to_delayed_work(work),
+						 typeof(*b), dynamic_stune_boost_input_rem);
+
+	/* Reset dynamic stune boost value to the default value */
+	cancel_delayed_work_sync(&b->dynamic_stune_boost_input_rem);
+	if (stune_boost_active) {
+		reset_stune_boost(boost_slot);
+		stune_boost_active = false;
+	}
+}
+
+static void do_dynamic_stune_boost_max_rem(struct work_struct *work)
+{
+	struct boost_drv *b = container_of(to_delayed_work(work),
+						 typeof(*b), dynamic_stune_boost_max_rem);
+
+	/* Reset dynamic stune boost value to the default value */
+	cancel_delayed_work_sync(&b->dynamic_stune_boost_max_rem);
+	if (stune_boost_active) {
+		reset_stune_boost(boost_slot);
+		stune_boost_active = false;
+	}
+}
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
+
 static void input_unboost_worker(struct work_struct *work)
 {
 	struct boost_drv *b = container_of(to_delayed_work(work),
 					   typeof(*b), input_unboost);
 
 	clear_bit(INPUT_BOOST, &b->state);
-
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	if (stune_boost_active) {
-		reset_stune_boost(boost_slot);
-		stune_boost_active = false;
-	}
-#endif
 
 	wake_up(&b->boost_waitq);
 }
@@ -223,13 +255,6 @@ static void max_unboost_worker(struct work_struct *work)
 					   typeof(*b), max_unboost);
 
 	clear_bit(MAX_BOOST, &b->state);
-
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	if (stune_boost_active) {
-		reset_stune_boost(boost_slot);
-		stune_boost_active = false;
-		}
-#endif
 
 	wake_up(&b->boost_waitq);
 }
@@ -282,7 +307,6 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Boost CPU to max frequency for max boost */
 	if (test_bit(MAX_BOOST, &b->state)) {
-		store_min_freq(policy);
 		policy->min = get_max_boost_freq(policy);
 		boosting = true;
 		return NOTIFY_OK;
@@ -290,7 +314,6 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Boost CPU for input boost */
 	if (test_bit(INPUT_BOOST, &b->state)) {
-		store_min_freq(policy);
 		policy->min = get_input_boost_freq(policy);
 		boosting = true;
 		return NOTIFY_OK;
@@ -462,7 +485,7 @@ static int __init cpu_input_boost_init(void)
 		goto unregister_handler;
 	}
 
-	thread = kthread_run(cpu_boost_thread, b, "cpu_boostd");
+	thread = kthread_run_perf_critical(cpu_perf_mask, cpu_boost_thread, b, "cpu_boostd");
 	if (IS_ERR(thread)) {
 		ret = PTR_ERR(thread);
 		pr_err("Failed to start CPU boost thread, err: %d\n", ret);
