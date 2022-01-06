@@ -27,7 +27,7 @@ enum {
 };
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
-static unsigned short dynamic_stune_boost __read_mostly = 1;
+static unsigned short dynamic_stune_boost __read_mostly = 3;
 module_param(dynamic_stune_boost, short, 0644);
 static unsigned short dynamic_stune_boost_input_ms __read_mostly = 58;
 module_param(dynamic_stune_boost_input_ms, short, 0644);
