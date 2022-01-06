@@ -150,7 +150,8 @@ static void sync_event_print(struct seq_file *s,
 		struct event_fence_info *info = sync_event ?
 				sync_event->priv : NULL;
 		int i;
-		for (i = 0; i < sync_event->info.num_fences; i++)
+
+		for (i = 0; info && i < info->num_fences; i++)
 			seq_printf(s, "sync: %s",
 				info->fences[i].name);
 		break;
