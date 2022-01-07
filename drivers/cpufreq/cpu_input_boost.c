@@ -27,12 +27,8 @@ enum {
 };
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
-static unsigned short dynamic_stune_boost __read_mostly = 3;
+static unsigned short dynamic_stune_boost __read_mostly = 1;
 module_param(dynamic_stune_boost, short, 0644);
-static unsigned short dynamic_stune_boost_input_ms __read_mostly = 58;
-module_param(dynamic_stune_boost_input_ms, short, 0644);
-static unsigned short dynamic_stune_boost_max_ms __read_mostly = 500;
-module_param(dynamic_stune_boost_max_ms, short, 0644);
 static bool stune_boost_active;
 static int boost_slot;
 #endif
@@ -147,12 +143,12 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 
 	set_bit(INPUT_BOOST, &b->state);
 
-	#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		if(!do_stune_boost(dynamic_stune_boost, &boost_slot))
-			stune_boost_active = true;
-		mod_delayed_work(system_unbound_wq, &b->dynamic_stune_boost_input_rem,
-			msecs_to_jiffies(dynamic_stune_boost_input_ms));
-	#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	if(!do_stune_boost(dynamic_stune_boost, &boost_slot))
+		stune_boost_active = true;
+	mod_delayed_work(system_unbound_wq, &b->dynamic_stune_boost_input_rem,
+		msecs_to_jiffies(CONFIG_INPUT_BOOST_DURATION_MS));
+#endif
 
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
 			      msecs_to_jiffies(CONFIG_INPUT_BOOST_DURATION_MS)))
@@ -196,7 +192,7 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if(!do_stune_boost(dynamic_stune_boost, &boost_slot))
 		stune_boost_active = true;
 	mod_delayed_work(system_unbound_wq, &b->dynamic_stune_boost_max_rem,
-		msecs_to_jiffies(dynamic_stune_boost_max_ms));
+		msecs_to_jiffies(boost_jiffies));
 #endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 	if (!mod_delayed_work(system_unbound_wq, &b->max_unboost,
@@ -287,13 +283,12 @@ static int cpu_boost_thread(void *data)
 	return 0;
 }
 
-static bool boosting;
-
 static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 			   void *data)
 {
 	struct boost_drv *b = container_of(nb, typeof(*b), cpu_notif);
 	struct cpufreq_policy *policy = data;
+	bool boosting = false;;
 
 	if (action != CPUFREQ_ADJUST)
 		return NOTIFY_OK;
