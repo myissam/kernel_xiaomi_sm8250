@@ -19,7 +19,7 @@ obj-vdso := $(addprefix $(obj)/, $(obj-vdso))
 
 ldflags-y := -shared -nostdlib -soname=linux-vdso.so.1 --hash-style=sysv \
 		--build-id -n -T
-		
+
 ifeq ($(CONFIG_LTO_CLANG),y)
 ccflags-y	+= $(DISABLE_LTO)
 KBUILD_CFLAGS	+= $(DISABLE_LTO)
@@ -37,7 +37,13 @@ UBSAN_SANITIZE			:= n
 OBJECT_FILES_NON_STANDARD	:= y
 KCOV_INSTRUMENT			:= n
 
-CFLAGS_vgettimeofday.o = -O3 -mcmodel=tiny -fasynchronous-unwind-tables
+CFLAGS_vgettimeofday.o = -fPIC -fasynchronous-unwind-tables
+ifneq ($(cc-name),clang)
+CFLAGS_vgettimeofday.o += -mcmodel=tiny
+CFLAGS_vgettimeofday.o = -O3
+else
+CFLAGS_vgettimeofday.o = -O2
+endif
 
 ifneq ($(c-gettimeofday-y),)
   CFLAGS_vgettimeofday.o += -include $(c-gettimeofday-y)
