@@ -172,7 +172,7 @@ static int devfreq_boost_thread(void *data)
 	struct boost_dev *b = data;
 	unsigned long old_state = 0;
 
-	sched_setscheduler_nocheck(current, SCHED_FIFO, &sched_max_rt_prio);
+	sched_setscheduler_nocheck(current, SCHED_RR, &sched_max_rt_prio);
 
 	while (1) {
 		bool should_stop = false;
