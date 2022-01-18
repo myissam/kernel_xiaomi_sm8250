@@ -1141,6 +1141,16 @@ static void qmi_rmnet_work_restart(void *port)
 	rcu_read_unlock();
 }
 
+static enum alarmtimer_restart qmi_rmnet_work_alarm(struct alarm *atimer,
+						    ktime_t now)
+{
+	struct rmnet_powersave_work *real_work;
+
+	real_work = container_of(atimer, struct rmnet_powersave_work, atimer);
+	qmi_rmnet_work_restart(real_work->port);
+	return ALARMTIMER_NORESTART;
+}
+
 static void dfc_wakelock_acquire(struct qmi_info *qmi)
 {
 	if (qmi && !qmi->wakelock_active) {
@@ -1155,16 +1165,6 @@ static void dfc_wakelock_release(struct qmi_info *qmi)
 		__pm_relax(qmi->ws);
 		qmi->wakelock_active = false;
 	}
-}
-
-static enum alarmtimer_restart qmi_rmnet_work_alarm(struct alarm *atimer,
-						    ktime_t now)
-{
-	struct rmnet_powersave_work *real_work;
-
-	real_work = container_of(atimer, struct rmnet_powersave_work, atimer);
-	qmi_rmnet_work_restart(real_work->port);
-	return ALARMTIMER_NORESTART;
 }
 
 static void qmi_rmnet_check_stats(struct work_struct *work)
