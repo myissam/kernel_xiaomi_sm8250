@@ -280,7 +280,7 @@ static int simple_lmk_reclaim_thread(void *data)
 		.sched_priority = MAX_RT_PRIO - 1
 	};
 
-	sched_setscheduler_nocheck(current, SCHED_FIFO, &sched_max_rt_prio);
+	sched_setscheduler_nocheck(current, SCHED_RR, &sched_max_rt_prio);
 	set_freezable();
 
 	while (1) {
