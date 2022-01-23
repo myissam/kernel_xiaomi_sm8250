@@ -98,6 +98,7 @@ struct schedtune {
 	 * flag above.
 	 */
 	bool sched_boost_enabled;
+#ifdef CONFIG_SCHED_WALT
 
 #ifdef CONFIG_SCHED_WALT
 	/*
