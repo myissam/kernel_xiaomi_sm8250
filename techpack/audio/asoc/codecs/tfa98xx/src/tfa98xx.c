@@ -16,8 +16,6 @@
  * limitations under the License.
  */
 
-#define pr_fmt(fmt) "%s(): " fmt, __func__
-
 #include <linux/module.h>
 #include <linux/i2c.h>
 #include <sound/core.h>
@@ -35,13 +33,6 @@
 #include "tfa98xx.h"
 #include "tfa.h"
 #include "tfa_dsp_fw.h"
-
-#undef pr_info
-#undef pr_err
-#undef pr_debug
-#define pr_debug(fmt, args...) printk(KERN_INFO "[TFA9874] " pr_fmt(fmt), ##args)
-#define pr_info(fmt, args...) printk(KERN_INFO "[TFA9874] " pr_fmt(fmt), ##args)
-#define pr_err(fmt, args...) printk(KERN_ERR "[tfa9874] " pr_fmt(fmt), ##args)
 
 /* required for enum tfa9912_irq */
 #include "tfa98xx_tfafieldnames.h"
@@ -2951,7 +2942,7 @@ enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(void)
 		bytes[2] = 0x81;
 		bytes[3] = 0x05;
 
-		pr_info("calibration value send to host DSP.\n");
+		pr_debug("calibration value send to host DSP.\n");
 		ret = send_tfa_cal_in_band(&bytes[1], sizeof(bytes) - 1);
 		msleep(10);
 
@@ -2970,7 +2961,7 @@ enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(void)
 static int tfa98xx_send_mute_cmd(void)
 {
 	uint8_t cmd[9]= {0x04, 0x81, 0x04,  0x00, 0x00, 0xff, 0x00, 0x00, 0xff};
-	pr_info("send mute command to host DSP.\n");
+	pr_debug("send mute command to host DSP.\n");
 	return send_tfa_cal_in_band(&cmd[0], sizeof(cmd));
 }
 #endif
