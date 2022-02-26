@@ -38,7 +38,7 @@ CFLAGS_vgettimeofday.o = -O3
 else
 CFLAGS_vgettimeofday.o = -O2
 endif
-CFLAGS_vgettimeofday.o = -mcmodel=tiny
+CFLAGS_vgettimeofday.o = -mcmodel=tiny -fasynchronous-unwind-tables
 
 ifneq ($(c-gettimeofday-y),)
   CFLAGS_vgettimeofday.o += -include $(c-gettimeofday-y)
