@@ -801,6 +801,7 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 
 	if (kms) {
 		pm_runtime_get_sync(dev);
+		irq_set_perf_affinity(platform_get_irq(pdev, 0), IRQF_PRIME_AFFINE);
 		ret = drm_irq_install(ddev, platform_get_irq(pdev, 0));
 		pm_runtime_put_sync(dev);
 		if (ret < 0) {
@@ -808,8 +809,6 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 			goto fail;
 		}
 	}
-
-	irq_set_perf_affinity(platform_get_irq(pdev, 0), IRQF_PRIME_AFFINE);
 
 	drm_mode_config_reset(ddev);
 
