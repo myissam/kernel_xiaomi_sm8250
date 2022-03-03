@@ -128,6 +128,9 @@ obj-$(CONFIG_RSEQ) += rseq.o
 $(obj)/configs.o: $(obj)/config_data.h
 
 targets += config_data.gz
+ifeq ($(CONFIG_BOARD_ALIOTH),y)
+$(obj)/config_data.gz: arch/arm64/configs/vendor/alioth-stock_defconfig FORCE
+else
 $(obj)/config_data.gz: $(KCONFIG_CONFIG) FORCE
 	$(call if_changed,gzip)
 
