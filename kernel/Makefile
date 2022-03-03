@@ -129,7 +129,7 @@ $(obj)/configs.o: $(obj)/config_data.h
 
 targets += config_data.gz
 ifeq ($(CONFIG_BOARD_ALIOTH),y)
-$(obj)/config_data.gz: arch/arm64/configs/alioth_stock-defconfig FORCE
+$(obj)/config_data.gz: arch/arm64/configs/vendor/alioth-stock_defconfig FORCE
 else ifeq ($(CONFIG_BOARD_APOLLO),y)
 $(obj)/config_data.gz: arch/arm64/configs/apollo_stock-defconfig FORCE
 else ifeq ($(CONFIG_BOARD_CAS),y)
