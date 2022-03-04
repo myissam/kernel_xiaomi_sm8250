@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2010-2022 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1231,6 +1232,16 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_pdev_sscan_per_detector_info,
     WMITLV_TAG_STRUC_wmi_ctrl_path_odd_addr_read_struct,
     WMITLV_TAG_STRUC_wmi_vdev_multiple_peer_group_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_vdev_set_ltf_key_seed_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_rtt_pasn_peer_create_req_event_fixed_param,
+    WMITLV_TAG_STRUC_wmi_rtt_pasn_peer_create_req_param,
+    WMITLV_TAG_STRUC_wmi_rtt_pasn_auth_status_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_rtt_pasn_auth_status_param,
+    WMITLV_TAG_STRUC_wmi_rtt_pasn_peer_delete_event_fixed_param,
+    WMITLV_TAG_STRUC_wmi_rtt_pasn_peer_delete_param,
+    WMITLV_TAG_STRUC_wmi_rtt_pasn_deauth_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_tx_send_params_ext,
+    WMITLV_TAG_STRUC_wmi_mgmt_rx_params_ext,
 } WMITLV_TAG_ID;
 
 /*
@@ -2851,7 +2862,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_MGMT_TX_CMDID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mgmt_tx_send_cmd_fixed_param, wmi_mgmt_tx_send_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, bufp, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_tx_send_params, wmi_tx_send_params, tx_send_params, WMITLV_SIZE_FIX) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_mlo_tx_send_params, mlo_tx_send_params, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_mlo_tx_send_params, mlo_tx_send_params, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_tx_send_params_ext, tx_send_params_ext, WMITLV_SIZE_VAR)
 
 WMITLV_CREATE_PARAM_STRUC(WMI_MGMT_TX_SEND_CMDID);
 
@@ -5161,7 +5173,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_PEER_STA_KICKOUT_EVENTID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mgmt_rx_hdr, wmi_mgmt_rx_hdr, hdr, WMITLV_SIZE_FIX)   \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, bufp, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_rssi_ctl_ext, rssi_ctl_ext, WMITLV_SIZE_VAR) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mgmt_rx_reo_params, wmi_mgmt_rx_reo_params, reo_params, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mgmt_rx_reo_params, wmi_mgmt_rx_reo_params, reo_params, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC,  wmi_mgmt_rx_params_ext,  mgmt_rx_params_ext, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_MGMT_RX_EVENTID);
 
 /* Management Rx FW Consumed Event */
