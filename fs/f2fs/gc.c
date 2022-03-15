@@ -172,7 +172,7 @@ do_gc:
 			sync_mode = false;
 
 		/* if return value is not zero, no victim was selected */
-		if (f2fs_gc(sbi, sync_mode, !foreground, false, NULL_SEGNO)) {
+		if (f2fs_gc(sbi, sbi->rapid_gc || sync_mode, !foreground, false, NULL_SEGNO)) {
 			wait_ms = gc_th->no_gc_sleep_time;
 
 			/* foreground GC was been triggered via f2fs_balance_fs() */
