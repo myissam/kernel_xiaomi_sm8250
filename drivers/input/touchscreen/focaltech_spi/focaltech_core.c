@@ -38,8 +38,6 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
-#include <linux/pm_qos.h>
-#include <linux/spi/spi-geni-qcom.h>
 #if defined(CONFIG_DRM)
 #include <drm/drm_notifier_mi.h>
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
@@ -720,9 +718,6 @@ static void fts_irq_read_report(void)
 	fts_prc_queue_work(ts_data);
 #endif
 
-	pm_qos_update_request(&ts_data->pm_spi_req, 100);
-	pm_qos_update_request(&ts_data->pm_touch_req, 100);
-
 	ret = fts_read_parse_touchdata(ts_data);
 	if (ret == 0) {
 		mutex_lock(&ts_data->report_mutex);
@@ -734,9 +729,6 @@ static void fts_irq_read_report(void)
 		mutex_unlock(&ts_data->report_mutex);
 	}
 
-	pm_qos_update_request(&ts_data->pm_spi_req, PM_QOS_DEFAULT_VALUE);
-	pm_qos_update_request(&ts_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
-
 #if FTS_ESDCHECK_EN
 	fts_esdcheck_set_intr(0);
 #endif
@@ -744,10 +736,9 @@ static void fts_irq_read_report(void)
 
 static irqreturn_t fts_irq_handler(int irq, void *data)
 {
-struct fts_ts_data *ts_data = fts_data;
-
 #if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
 	int ret = 0;
+	struct fts_ts_data *ts_data = fts_data;
 
 	if ((ts_data->suspended) && (ts_data->pm_suspend)) {
 		ret = wait_for_completion_timeout(
@@ -763,7 +754,6 @@ struct fts_ts_data *ts_data = fts_data;
 	pm_stay_awake(fts_data->dev);
 	fts_irq_read_report();
 	pm_relax(fts_data->dev);
-
 	return IRQ_HANDLED;
 }
 
@@ -772,7 +762,7 @@ static int fts_irq_registration(struct fts_ts_data *ts_data)
 	int ret = 0;
 	struct fts_ts_platform_data *pdata = ts_data->pdata;
 
-  ts_data->irq = gpio_to_irq(pdata->irq_gpio);
+	ts_data->irq = gpio_to_irq(pdata->irq_gpio);
 	pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
 	FTS_INFO("irq:%d, flag:%x", ts_data->irq, pdata->irq_gpio_flags);
 	ret = request_threaded_irq(ts_data->irq, NULL, fts_irq_handler,
@@ -1551,7 +1541,7 @@ static void fts_power_supply_work(struct work_struct *work)
 	pm_relax(ts_data->dev);
 }
 
-static int fts_ts_probe_entry(struct spi_device *spi, struct fts_ts_data *ts_data)
+static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 {
 	int ret = 0;
 	int pdata_size = sizeof(struct fts_ts_platform_data);
@@ -1679,17 +1669,6 @@ static int fts_ts_probe_entry(struct spi_device *spi, struct fts_ts_data *ts_dat
 	}
 #endif
 
-	ts_data->pm_spi_req.type = PM_QOS_REQ_AFFINE_IRQ;
-	ts_data->pm_spi_req.irq = geni_spi_get_master_irq(spi);
-	irq_set_perf_affinity(ts_data->pm_spi_req.irq, IRQF_PERF_AFFINE);
-	pm_qos_add_request(&ts_data->pm_spi_req, PM_QOS_CPU_DMA_LATENCY,
-		PM_QOS_DEFAULT_VALUE);
-
-	ts_data->pm_touch_req.type = PM_QOS_REQ_AFFINE_IRQ;
-	ts_data->pm_touch_req.irq = spi->irq;
-	pm_qos_add_request(&ts_data->pm_touch_req, PM_QOS_CPU_DMA_LATENCY,
-		PM_QOS_DEFAULT_VALUE);
-
 	ret = fts_irq_registration(ts_data);
 	if (ret) {
 		FTS_ERROR("request irq failed");
@@ -1735,8 +1714,6 @@ static int fts_ts_probe_entry(struct spi_device *spi, struct fts_ts_data *ts_dat
 	return 0;
 
 err_irq_req:
-pm_qos_remove_request(&ts_data->pm_touch_req);
-pm_qos_remove_request(&ts_data->pm_spi_req);
 #if FTS_POWER_SOURCE_CUST_EN
 err_power_init:
 	fts_power_source_exit(ts_data);
@@ -1790,8 +1767,6 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 
 	free_irq(ts_data->irq, ts_data);
 	input_unregister_device(ts_data->input_dev);
-	pm_qos_remove_request(&ts_data->pm_touch_req);
-	pm_qos_remove_request(&ts_data->pm_spi_req);
 
 	power_supply_unreg_notifier(&ts_data->power_supply_notifier);
 	mutex_destroy(&ts_data->power_supply_lock);
@@ -2399,7 +2374,7 @@ static int fts_ts_probe(struct spi_device *spi)
 	ts_data->bus_type = BUS_TYPE_SPI_V2;
 	spi_set_drvdata(spi, ts_data);
 
-	ret = fts_ts_probe_entry(spi, ts_data);
+	ret = fts_ts_probe_entry(ts_data);
 	if (ret) {
 		FTS_ERROR("Touch Screen(SPI BUS) driver probe fail");
 		kfree_safe(ts_data);
@@ -2425,7 +2400,6 @@ static int fts_ts_probe(struct spi_device *spi)
 #endif
 
 	FTS_INFO("Touch Screen(SPI BUS) driver prboe successfully");
-
 	return 0;
 }
 
