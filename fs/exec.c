@@ -83,6 +83,7 @@ static DEFINE_RWLOCK(binfmt_lock);
 
 #define SURFACEFLINGER_BIN_PREFIX "/system/bin/surfaceflinger"
 #define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/vendor.qti.hardware.display.composer-service"
+#define UDFPS_BIN_PREFIX "/vendor/bin/hw/android.hardware.biometrics.fingerprint@2.3-service.xiaomi_kona"
 #define ZYGOTE32_BIN "/system/bin/app_process32"
 #define ZYGOTE64_BIN "/system/bin/app_process64"
 static struct signal_struct *zygote32_sig;
@@ -1882,6 +1883,12 @@ static int __do_execve_file(int fd, struct filename *filename,
 					   strlen(SURFACEFLINGER_BIN_PREFIX)))) {
 			current->flags |= PF_PERF_CRITICAL;
 			set_cpus_allowed_ptr(current, cpu_perf_mask);
+		}
+		else if (unlikely(!strncmp(filename->name,
+					   UDFPS_BIN_PREFIX,
+					   strlen(UDFPS_BIN_PREFIX)))) {
+		        current->flags |= PF_PERF_CRITICAL;
+		        set_cpus_allowed_ptr(current, cpu_prime_mask);
 		}
 	}
 
