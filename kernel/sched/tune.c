@@ -421,7 +421,6 @@ schedtune_boostgroup_update(int idx, int boost)
 			trace_sched_tune_boostgroup_update(cpu, -1, bg->boost_max);
 			continue;
 		}
-
 		trace_sched_tune_boostgroup_update(cpu, 0, bg->boost_max);
 	}
 
@@ -793,6 +792,9 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 {
 	struct schedtune *st = css_st(css);
 
+	if (!strcmp(css->cgroup->kn->name, "top-app"))
+		boost = 0;
+
 	if (boost < 0 || boost > 100)
 		return -EINVAL;
 
@@ -982,9 +984,9 @@ static void write_default_values(struct cgroup_subsys_state *css)
 	static struct st_data st_targets[] = {
 		{ "audio-app",	0, 0, 0, 0 },
 		{ "background",	0, 0, 0, 0 },
-		{ "foreground",	0, 1, 0, 1 },
-		{ "rt",		0, 0, 0, 0 },
-		{ "top-app",	1, 1, 0, 1 },
+		{ "foreground",	0, 1, 0, 0 },
+		{ "rt",			0, 0, 0, 0 },
+		{ "top-app",	0, 1, 0, 0 },
 	};
 	int i;
 
@@ -1011,7 +1013,7 @@ static void write_default_values(struct cgroup_subsys_state *css)
 static void filterSchedtune(struct schedtune *sti, struct schedtune **sto_p, char *st_name)
 {
 	if (!strncmp(sti->css.cgroup->kn->name, st_name, strlen(st_name))) {
-		sti->sched_boost = 3;
+		sti->sched_boost = 20;
 		*sto_p = sti;
 	}
 }
