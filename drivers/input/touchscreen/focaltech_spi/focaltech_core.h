@@ -56,6 +56,7 @@
 #include <linux/time.h>
 #include <linux/jiffies.h>
 #include <linux/fs.h>
+#include <linux/pm_qos.h>
 #include <linux/proc_fs.h>
 #include <linux/version.h>
 #include <linux/types.h>
@@ -64,6 +65,8 @@
 #include <linux/dma-mapping.h>
 #include "focaltech_common.h"
 #include <linux/power_supply.h>
+
+#include <linux/spi/spi-geni-qcom.h>
 
 
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
@@ -246,6 +249,8 @@ struct fts_ts_data {
 	bool is_expert_mode;
 #endif
 
+	struct pm_qos_request pm_spi_req;
+	struct pm_qos_request pm_touch_req;
 };
 
 enum GESTURE_MODE_TYPE {
