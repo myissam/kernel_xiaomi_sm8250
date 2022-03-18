@@ -738,7 +738,15 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 	touch_irq_boost();
 	pm_stay_awake(fts_data->dev);
 	lpm_disable_for_dev(true, LPM_EVENT_INPUT);
+
+	pm_qos_update_request(&ts_data->pm_touch_req, 100);
+	pm_qos_update_request(&ts_data->pm_spi_req, 100);
+
 	fts_irq_read_report();
+
+	pm_qos_update_request(&ts_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
+	pm_qos_update_request(&ts_data->pm_spi_req, PM_QOS_DEFAULT_VALUE);
+
 	pm_relax(fts_data->dev);
 	return IRQ_HANDLED;
 }
@@ -2357,6 +2365,17 @@ static int fts_ts_probe(struct spi_device *spi)
 		return -ENOMEM;
 	}
 
+	ts_data->pm_spi_req.type = PM_QOS_REQ_AFFINE_IRQ;
+	ts_data->pm_spi_req.irq = geni_spi_get_master_irq(spi);
+	irq_set_perf_affinity(ts_data->pm_spi_req.irq, IRQF_PERF_AFFINE);
+	pm_qos_add_request(&ts_data->pm_spi_req, PM_QOS_CPU_DMA_LATENCY,
+			PM_QOS_DEFAULT_VALUE);
+
+	ts_data->pm_touch_req.type = PM_QOS_REQ_AFFINE_IRQ;
+	ts_data->pm_touch_req.irq = spi->irq;
+	pm_qos_add_request(&ts_data->pm_touch_req, PM_QOS_CPU_DMA_LATENCY,
+			PM_QOS_DEFAULT_VALUE);
+
 	fts_data = ts_data;
 	ts_data->spi = spi;
 	ts_data->dev = &spi->dev;
@@ -2369,6 +2388,8 @@ static int fts_ts_probe(struct spi_device *spi)
 	ret = fts_ts_probe_entry(ts_data);
 	if (ret) {
 		FTS_ERROR("Touch Screen(SPI BUS) driver probe fail");
+		pm_qos_remove_request(&ts_data->pm_touch_req);
+		pm_qos_remove_request(&ts_data->pm_spi_req);
 		kfree_safe(ts_data);
 		return ret;
 	}
