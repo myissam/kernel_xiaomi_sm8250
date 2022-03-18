@@ -736,7 +736,6 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 	struct fts_ts_data *ts_data = fts_data;
 
 	touch_irq_boost();
-	pm_stay_awake(fts_data->dev);
 	lpm_disable_for_dev(true, LPM_EVENT_INPUT);
 
 	pm_qos_update_request(&ts_data->pm_touch_req, 100);
@@ -747,7 +746,6 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 	pm_qos_update_request(&ts_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
 	pm_qos_update_request(&ts_data->pm_spi_req, PM_QOS_DEFAULT_VALUE);
 
-	pm_relax(fts_data->dev);
 	return IRQ_HANDLED;
 }
 
