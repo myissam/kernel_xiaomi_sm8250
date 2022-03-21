@@ -190,7 +190,6 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost, 
 			msecs_to_jiffies(input_boost_duration))) {	
-		set_bit(INPUT_BOOST, &b->state);
 		wake_up(&b->boost_waitq);
 	}
 }
@@ -222,19 +221,14 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 		/* Skip this boost if there's a longer boost in effect */
 		if (time_after(curr_expires, new_expires))
 			return;
-
+		else {
+		set_bit(MAX_BOOST, &b->state);
+		wake_up(&b->boost_waitq);
+		}
 	} while (atomic_long_cmpxchg(&b->max_boost_expires, curr_expires,
 				     new_expires) != curr_expires);
 
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		do_stune_sched_boost(&b->stune_slot);
-#endif
-
-	set_bit(MAX_BOOST, &b->state);
-	if(!mod_delayed_work(system_unbound_wq, &b->max_unboost, boost_jiffies)) {
-		set_bit(MAX_BOOST, &b->state);
-		wake_up(&b->boost_waitq);
-	}
+	mod_delayed_work(system_unbound_wq, &b->max_unboost, 0);
 }
 
 void cpu_input_boost_kick_max(unsigned int duration_ms)
