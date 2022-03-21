@@ -13,6 +13,7 @@
 
 #include <linux/anon_inodes.h>
 #include <linux/slab.h>
+#include <linux/sched.h>
 #include <linux/sched/autogroup.h>
 #include <linux/sched/mm.h>
 #include <linux/sched/coredump.h>
@@ -2358,11 +2359,16 @@ long _do_fork(unsigned long clone_flags,
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	int slot;
+#endif
 
  	/* Boost DDR bus to the max for 50 ms when userspace launches an app */
 	if (task_is_zygote(current)){
-		cpu_input_boost_kick_max(50);
-		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+		do_stune_sched_boost(&slot);
+#endif
+		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
 	}
 
 	/*

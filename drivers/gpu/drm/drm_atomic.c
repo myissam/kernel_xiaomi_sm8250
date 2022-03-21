@@ -31,11 +31,12 @@
 #include <drm/drm_mode.h>
 #include <drm/drm_print.h>
 #include <drm/drm_writeback.h>
+#include <linux/sched.h>
+#include <linux/sched/sysctl.h>
 #include <linux/sync_file.h>
 #include <linux/pm_qos.h>
 #include <linux/cpu_input_boost.h>
 #include <linux/devfreq_boost.h>
-#include <linux/sched/sysctl.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -2574,6 +2575,9 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 	struct drm_out_fence_state *fence_state;
 	int ret = 0;
 	unsigned int i, j, num_fences;
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	int slot;
+#endif
 
 	/* disallow for drivers not supporting atomic: */
 	if (!drm_core_check_feature(dev, DRIVER_ATOMIC))
@@ -2604,8 +2608,11 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 	/* Boost CPU and DDR when committing a new frame */
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
 			devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
-			if ((sysctl_sched_boost) && df_boost_within_input(3250))
-		    	cpu_input_boost_kick();
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+			if ((sysctl_sched_boost) || df_boost_within_input(3250)) {
+				do_stune_sched_boost(&slot);
+#endif
+		}
 	}
 
 	drm_modeset_acquire_init(&ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE);
