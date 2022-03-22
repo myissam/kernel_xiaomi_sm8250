@@ -5,7 +5,6 @@
 #include <linux/sort.h>
 #include <linux/delay.h>
 #include <linux/mm.h>
-#include <linux/sched.h>
 #include <linux/sched/signal.h>
 #include <linux/sched/task.h>
 #include <linux/magic.h>
@@ -15,7 +14,6 @@
 #include <linux/pid_namespace.h>
 #include <linux/cgroupstats.h>
 #include <linux/binfmts.h>
-#include <linux/cpu_input_boost.h>
 #include <linux/devfreq_boost.h>
 
 #include <trace/events/cgroup.h>
@@ -515,9 +513,6 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 	struct task_struct *task;
 	const struct cred *cred, *tcred;
 	ssize_t ret;
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	int slot;
-#endif
 
 	cgrp = cgroup_kn_lock_live(of->kn, false);
 	if (!cgrp)
@@ -549,12 +544,7 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 	if (!ret && !threadgroup &&
 		!memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
 		task_is_zygote(task->parent)) {
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		if (time_before(jiffies, msecs_to_jiffies(500)))
-			do_stune_sched_boost(&slot);
-#endif
-		//cpu_input_boost_kick_max(500);
-		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 500);
+			devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 500);
 	}
 
 out_finish:
