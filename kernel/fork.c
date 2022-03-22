@@ -2359,15 +2359,9 @@ long _do_fork(unsigned long clone_flags,
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	int slot;
-#endif
 
- 	/* Boost DDR bus to the max for 50 ms when userspace launches an app */
+ 	/* Boost DDR bus when userspace launches an app */
 	if (task_is_zygote(current)){
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		do_stune_sched_boost(&slot);
-#endif
 		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
 	}
 

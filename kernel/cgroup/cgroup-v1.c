@@ -515,9 +515,6 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 	struct task_struct *task;
 	const struct cred *cred, *tcred;
 	ssize_t ret;
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	int slot;
-#endif
 
 	cgrp = cgroup_kn_lock_live(of->kn, false);
 	if (!cgrp)
@@ -549,12 +546,7 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 	if (!ret && !threadgroup &&
 		!memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
 		task_is_zygote(task->parent)) {
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		if (time_before(jiffies, msecs_to_jiffies(500)))
-			do_stune_sched_boost(&slot);
-#endif
-		//cpu_input_boost_kick_max(500);
-		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 500);
+			devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 500);
 	}
 
 out_finish:
