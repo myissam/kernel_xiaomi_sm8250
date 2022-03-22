@@ -1654,7 +1654,7 @@ struct request *blk_old_get_request_no_ioc(struct request_queue *q,
 }
 EXPORT_SYMBOL(blk_old_get_request_no_ioc);
 
-#if defined(UFSFEATURE_31) || defined(UFSFEATURE_31)
+#if defined(CONFIG_UFSFEATURE_31) || defined(CONFIG_UFSFEATURE_31)
 /* flags: BLK_MQ_REQ_PREEMPT and/or BLK_MQ_REQ_NOWAIT. */
 struct request *blk_old_get_request_no_ioc(struct request_queue *q,
                                unsigned int op, blk_mq_req_flags_t flags)
