@@ -66,6 +66,7 @@ static int ufshcd_wb_toggle_flush_during_h8(struct ufs_hba *hba, bool set);
 
 static unsigned int storage_mfrid;
 #define MANUFACTURER_SAMSUNG 0x1CE
+#define MANUFACTURER_TOSHIBA 0x198
 #define IS_SAMSUNG_DEVICE(mfrid)   (MANUFACTURER_SAMSUNG == mfrid)
 #ifdef CONFIG_DEBUG_FS
 
@@ -3953,8 +3954,6 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 		hba->lrb[tag].hpb_ctx_id = MAX_HPB_CONTEXT_ID;
 send_orig_cmd:
 #endif
-	/* Vote PM QoS for the request */
-	ufshcd_vops_pm_qos_req_start(hba, cmd->request);
 
 	WARN_ON(hba->clk_gating.state != CLKS_ON);
 
@@ -6731,7 +6730,7 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	struct scsi_cmnd *cmd;
 	int result;
 	int index;
-#if defined (CONFIG_UFSFEATURE_31)
+#if defined(CONFIG_UFSFEATURE_31)
 	bool scsi_req = false;
 #endif
 
@@ -7168,15 +7167,11 @@ static bool ufshcd_wb_sup(struct ufs_hba *hba)
 	if (IS_SAMSUNG_DEVICE(storage_mfrid))
 		return false;
 	else
-		return ((hba->dev_info.d_ext_ufs_feature_sup &
-			 UFS_DEV_WRITE_BOOSTER_SUP) &&
-			(hba->dev_info.b_wb_buffer_type
-			 || hba->dev_info.wb_config_lun));
+		return (hba->dev_info.d_ext_ufs_feature_sup &
+			UFS_DEV_WRITE_BOOSTER_SUP);
 #else
-	return ((hba->dev_info.d_ext_ufs_feature_sup &
-		   UFS_DEV_WRITE_BOOSTER_SUP) &&
-		  (hba->dev_info.b_wb_buffer_type
-		   || hba->dev_info.wb_config_lun));
+	return (hba->dev_info.d_ext_ufs_feature_sup &
+		UFS_DEV_WRITE_BOOSTER_SUP);
 #endif
 }
 
@@ -11336,7 +11331,7 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 		dev_err(dev, "ufsf_feature  allocation failed\n");
 		err = -ENOMEM;
 		goto out_error;
-	}	
+	}
 	hba->ufsf = ufsf;
 #endif
 
@@ -11582,13 +11577,6 @@ out_error:
 	return err;
 }
 EXPORT_SYMBOL_GPL(ufshcd_init);
-static int __init storage_mfrid_setup(char *str)
-{
-	storage_mfrid = simple_strtol(str, NULL, 16);
-	return 1;
-}
-__setup("storage_mfrid=",storage_mfrid_setup);
-
 static int __init storage_mfrid_setup(char *str)
 {
 	storage_mfrid = simple_strtol(str, NULL, 16);
