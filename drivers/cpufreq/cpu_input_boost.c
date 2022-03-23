@@ -49,7 +49,7 @@ static unsigned short input_boost_duration __read_mostly =
 	CONFIG_INPUT_BOOST_DURATION_MS;
 static unsigned short wake_boost_duration __read_mostly =
 	CONFIG_WAKE_BOOST_DURATION_MS;
-
+	
 module_param(input_boost_freq_little, uint, 0644);
 module_param(input_boost_freq_big, uint, 0644);
 module_param(input_boost_freq_prime, uint, 0644);
@@ -69,6 +69,7 @@ module_param(wake_boost_duration, short, 0644);
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 static unsigned short dynamic_stune_boost __read_mostly;
 module_param(dynamic_stune_boost, short, 0644);
+int stune_slot;
 #endif
 
 enum {
@@ -87,7 +88,6 @@ struct boost_drv {
 	atomic_long_t max_boost_expires;
 	unsigned long state;
 	bool boosting;
-	int stune_slot;
 };
 
 static void input_unboost_worker(struct work_struct *work);
@@ -183,16 +183,15 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (test_bit(SCREEN_OFF, &b->state) || (input_boost_duration == 0))
 		return;
 
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	do_stune_sched_boost(&b->stune_slot);
-#endif
-
 	set_bit(INPUT_BOOST, &b->state);
-	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost, 
-			msecs_to_jiffies(input_boost_duration))) {	
-		set_bit(INPUT_BOOST, &b->state);
+	
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	do_stune_boost(dynamic_stune_boost, &stune_slot);
+#endif
+	
+	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
+			      msecs_to_jiffies(input_boost_duration)))
 		wake_up(&b->boost_waitq);
-	}
 }
 
 void cpu_input_boost_kick(void)
@@ -213,6 +212,10 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	do_stune_boost(dynamic_stune_boost, &stune_slot);
+#endif
+
 	boost_jiffies = msecs_to_jiffies(duration_ms);
 
 	do {
@@ -226,13 +229,8 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	} while (atomic_long_cmpxchg(&b->max_boost_expires, curr_expires,
 				     new_expires) != curr_expires);
 
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-		do_stune_sched_boost(&b->stune_slot);
-#endif
-
 	set_bit(MAX_BOOST, &b->state);
 	if(!mod_delayed_work(system_unbound_wq, &b->max_unboost, boost_jiffies)) {
-		set_bit(MAX_BOOST, &b->state);
 		wake_up(&b->boost_waitq);
 	}
 }
@@ -251,6 +249,10 @@ static void input_unboost_worker(struct work_struct *work)
 
 	clear_bit(INPUT_BOOST, &b->state);
 	wake_up(&b->boost_waitq);
+	
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	reset_stune_boost(stune_slot);
+#endif
 }
 
 static void max_unboost_worker(struct work_struct *work)
@@ -260,6 +262,10 @@ static void max_unboost_worker(struct work_struct *work)
 
 	clear_bit(MAX_BOOST, &b->state);
 	wake_up(&b->boost_waitq);
+	
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	reset_stune_boost(stune_slot);
+#endif
 }
 
 static int cpu_boost_thread(void *data)
@@ -392,6 +398,10 @@ free_handle:
 
 static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	reset_stune_boost(stune_slot);
+#endif
+	
 	input_close_device(handle);
 	input_unregister_handle(handle);
 	kfree(handle);
