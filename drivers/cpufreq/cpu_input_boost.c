@@ -67,10 +67,15 @@ module_param(input_boost_duration, short, 0644);
 module_param(wake_boost_duration, short, 0644);
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
-static unsigned short dynamic_stune_boost __read_mostly = 1;
+static unsigned short dynamic_stune_boost __read_mostly;
 module_param(dynamic_stune_boost, short, 0644);
 int stune_slot;
 #endif
+
+static unsigned int idle_freq[3];
+static unsigned int min_freq[3];
+static unsigned int input_freq[3];
+static unsigned int max_freq[3];
 
 enum {
 	SCREEN_OFF,
@@ -101,73 +106,105 @@ static struct boost_drv boost_drv_g __read_mostly = {
 	.boost_waitq = __WAIT_QUEUE_HEAD_INITIALIZER(boost_drv_g.boost_waitq)
 };
 
-static unsigned int get_input_boost_freq(struct cpufreq_policy *policy)
+static void store_idle_freq(struct cpufreq_policy *policy)
 {
-	unsigned int freq;
-
-	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = max(input_boost_freq_little, cpu_freq_min_little);
-	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-		freq = max(input_boost_freq_big, cpu_freq_min_big);
-	else
-		freq = max(input_boost_freq_prime, cpu_freq_min_prime);
-	return min(freq, policy->max);
-}
-
-static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
-{
-	unsigned int freq;
-
-	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = max(max_boost_freq_little, cpu_freq_min_little);
-	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-		freq = max(max_boost_freq_big, cpu_freq_min_big);
-	else
-		freq = max(max_boost_freq_prime, cpu_freq_min_prime);
-	return min(freq, policy->max);
-}
-
-static unsigned int get_min_freq(struct cpufreq_policy *policy)
-{
-	unsigned int freq;
-
-	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = cpu_freq_min_little;
-	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-		freq = cpu_freq_min_big;
-	else
-		freq = cpu_freq_min_prime;
-
-	return max(freq, policy->cpuinfo.min_freq);
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
+		idle_freq[0] = cpu_freq_idle_little;
+	} else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
+		idle_freq[1] = cpu_freq_idle_big;
+	} else {
+		idle_freq[2] = cpu_freq_idle_prime;
+	}
 }
 
 static unsigned int get_idle_freq(struct cpufreq_policy *policy)
 {
-	unsigned int freq;
-
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = cpu_freq_idle_little;
+		return max(idle_freq[0], policy->cpuinfo.min_freq);
 	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-		freq = cpu_freq_idle_big;
+		return max(idle_freq[1], policy->cpuinfo.min_freq);
 	else
-		freq = cpu_freq_idle_prime;
-
-	return max(freq, policy->cpuinfo.min_freq);
+		return max(idle_freq[2], policy->cpuinfo.min_freq);
 }
 
+static void store_min_freq(struct cpufreq_policy *policy)
+{
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
+		min_freq[0] = cpu_freq_min_little;
+	} else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
+		min_freq[1] = cpu_freq_min_big;
+	} else {
+		min_freq[2] = cpu_freq_min_prime;
+	}
+}
+
+static unsigned int get_min_freq(struct cpufreq_policy *policy)
+{
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+		return max(min_freq[0], policy->cpuinfo.min_freq);
+  else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+		return max(min_freq[1], policy->cpuinfo.min_freq);
+  else
+		return max(min_freq[2], policy->cpuinfo.min_freq);
+}
+
+static void store_input_freq(struct cpufreq_policy *policy)
+{
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
+		input_freq[0] = max(input_boost_freq_little, cpu_freq_min_little);
+	} else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
+		input_freq[1] = max(input_boost_freq_big, cpu_freq_min_big);
+	} else {
+		input_freq[2] = max(input_boost_freq_prime, cpu_freq_min_prime);
+	}
+}
+
+static unsigned int get_input_boost_freq(struct cpufreq_policy *policy)
+{
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+		return min(input_freq[0], policy->max);
+	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+		return min(input_freq[1], policy->max);
+	else
+		return min(input_freq[2], policy->max);
+}
+
+static void store_max_freq(struct cpufreq_policy *policy)
+{
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
+		max_freq[0] = max(max_boost_freq_little, cpu_freq_min_little);
+	} else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
+		max_freq[1] = max(max_boost_freq_big, cpu_freq_min_big);
+	} else {
+		max_freq[2] = max(max_boost_freq_prime, cpu_freq_min_prime);
+	}
+}
+
+static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
+{
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+		return min(max_freq[0], policy->max);
+	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+		return min(max_freq[1], policy->max);
+	else
+		return min(max_freq[2], policy->max);
+}
 
 static void update_online_cpu_policy(void)
 {
 	unsigned int cpu;
 
-	/* Only one CPU from each cluster needs to be updated */
 	get_online_cpus();
-	cpu = cpumask_first_and(cpu_lp_mask, cpu_online_mask);
-	cpufreq_update_policy(cpu);
-	cpu = cpumask_first_and(cpu_perf_mask, cpu_online_mask);
-	cpufreq_update_policy(cpu);
-	cpu = cpumask_first_and(cpu_prime_mask, cpu_online_mask);
-	cpufreq_update_policy(cpu);
+		for_each_possible_cpu(cpu) {
+			if (cpu_online(cpu)) {
+				if (cpumask_intersects(cpumask_of(cpu), cpu_lp_mask))
+					cpufreq_update_policy(cpu);
+				if (cpumask_intersects(cpumask_of(cpu), cpu_perf_mask))
+					cpufreq_update_policy(cpu);
+				if (cpumask_intersects(cpumask_of(cpu), cpu_prime_mask))
+					cpufreq_update_policy(cpu);
+			}
+		}
 	put_online_cpus();
 }
 
@@ -175,6 +212,10 @@ static void unboost_all_cpus(struct boost_drv *b)
 {
 	clear_bit(INPUT_BOOST | MAX_BOOST, &b->state);
 	wake_up(&b->boost_waitq);
+
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	reset_stune_boost(stune_slot);
+#endif
 }
 
 static void __cpu_input_boost_kick(struct boost_drv *b)
@@ -186,7 +227,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	set_bit(INPUT_BOOST, &b->state);
 	
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	do_stune_boost(dynamic_stune_boost, &stune_slot);
+	do_stune_sched_boost(&stune_slot);
 #endif
 	
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
@@ -212,10 +253,6 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-	do_stune_boost(dynamic_stune_boost, &stune_slot);
-#endif
-
 	boost_jiffies = msecs_to_jiffies(duration_ms);
 
 	do {
@@ -228,6 +265,10 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 
 	} while (atomic_long_cmpxchg(&b->max_boost_expires, curr_expires,
 				     new_expires) != curr_expires);
+
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	do_stune_sched_boost(&stune_slot);
+#endif
 
 	set_bit(MAX_BOOST, &b->state);
 	if(!mod_delayed_work(system_unbound_wq, &b->max_unboost, boost_jiffies)) {
@@ -309,25 +350,33 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Unboost when the screen is off */
 	if (test_bit(SCREEN_OFF, &b->state)) {
+		store_idle_freq(policy);
 		policy->min = get_idle_freq(policy);
+		b->boosting = false;
 		return NOTIFY_OK;
 	}
 
 	/* Boost CPU to max frequency for max boost */
 	if (test_bit(MAX_BOOST, &b->state)) {
+		store_max_freq(policy);
 		policy->min = get_max_boost_freq(policy);
+		b->boosting = true;
 		return NOTIFY_OK;
 	}
 
-	/*
-	 * Boost to policy->max if the boost frequency is higher. When
-	 * unboosting, set policy->min to the absolute min freq for the CPU.
-	 */
-	if (test_bit(INPUT_BOOST, &b->state))
+	/* Boost CPU for input boost */
+	if (test_bit(INPUT_BOOST, &b->state)) {
+		store_input_freq(policy);
 		policy->min = get_input_boost_freq(policy);
-	else
-		policy->min = get_min_freq(policy);
+		b->boosting = true;
+		return NOTIFY_OK;
+	}
 
+	if (b->boosting) {
+		store_min_freq(policy);
+		policy->min = get_min_freq(policy);
+		b->boosting = false;
+	}
 	return NOTIFY_OK;
 }
 
@@ -453,6 +502,8 @@ static int __init cpu_input_boost_init(void)
 	struct task_struct *thread;
 	int ret;
 
+	clear_bit(SCREEN_OFF, &b->state);
+	atomic64_set(&b->max_boost_expires, 0);
 	b->cpu_notif.notifier_call = cpu_notifier_cb;
 	b->cpu_notif.priority = INT_MAX - 2;
 	ret = cpufreq_register_notifier(&b->cpu_notif, CPUFREQ_POLICY_NOTIFIER);
