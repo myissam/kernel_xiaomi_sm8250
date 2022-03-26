@@ -793,7 +793,7 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	struct schedtune *st = css_st(css);
 
 	if (!strcmp(css->cgroup->kn->name, "top-app"))
-		boost = 0;
+		boost = 1;
 
 	if (boost < 0 || boost > 100)
 		return -EINVAL;
@@ -986,7 +986,7 @@ static void write_default_values(struct cgroup_subsys_state *css)
 		{ "background",	0, 0, 0, 0 },
 		{ "foreground",	0, 1, 0, 0 },
 		{ "rt",			0, 0, 0, 0 },
-		{ "top-app",	0, 1, 0, 0 },
+		{ "top-app",	1, 1, 0, 0 },
 	};
 	int i;
 
@@ -1013,7 +1013,7 @@ static void write_default_values(struct cgroup_subsys_state *css)
 static void filterSchedtune(struct schedtune *sti, struct schedtune **sto_p, char *st_name)
 {
 	if (!strncmp(sti->css.cgroup->kn->name, st_name, strlen(st_name))) {
-		sti->sched_boost = 10;
+		sti->sched_boost = 0;
 		*sto_p = sti;
 	}
 }
