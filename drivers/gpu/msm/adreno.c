@@ -3378,14 +3378,12 @@ int adreno_gmu_fenced_write(struct adreno_device *adreno_dev,
 	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 	unsigned int reg_offset = gpudev->reg_offsets->offsets[offset];
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
-	u64 ts1, ts2;
 
 	adreno_writereg(adreno_dev, offset, val);
 
 	if (!gmu_core_isenabled(KGSL_DEVICE(adreno_dev)))
 		return 0;
 
-	ts1 = gmu_core_dev_read_ao_counter(device);
 	for (i = 0; i < GMU_CORE_LONG_WAKEUP_RETRY_LIMIT; i++) {
 		/*
 		 * Make sure the previous register write is posted before
@@ -3417,14 +3415,11 @@ int adreno_gmu_fenced_write(struct adreno_device *adreno_dev,
 	if (i < GMU_CORE_SHORT_WAKEUP_RETRY_LIMIT)
 		return 0;
 
-	ts2 = gmu_core_dev_read_ao_counter(device);
-
 	if (i == GMU_CORE_LONG_WAKEUP_RETRY_LIMIT) {
 		dev_err(device->dev,
-			"Timed out waiting %d usecs to write fenced register 0x%x, timestamps %llu %llu, status 0x%x\n",
+			"Timed out waiting %d usecs to write fenced register 0x%x, status 0x%x\n",
 			i * GMU_CORE_WAKEUP_DELAY_US,
-			reg_offset, ts1, ts2, status);
-
+			reg_offset, status);
 		return -ETIMEDOUT;
 	}
 
