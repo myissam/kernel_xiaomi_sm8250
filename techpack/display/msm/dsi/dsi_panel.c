@@ -693,7 +693,6 @@ int dsi_panel_update_backlight(struct dsi_panel *panel,
 	int rc = 0;
 	struct mipi_dsi_device *dsi;
 	struct dsi_panel_mi_cfg *mi_cfg = &panel->mi_cfg;
-	struct dsi_backlight_config *bl;
 	static int use_count = 10;
 
 	if (!panel || (bl_lvl > 0xffff)) {
@@ -702,7 +701,6 @@ int dsi_panel_update_backlight(struct dsi_panel *panel,
 	}
 
 	dsi = &panel->mipi_device;
-	bl = &panel->bl_config;
 
 	if (panel->bl_config.bl_inverted_dbv)
 		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
@@ -724,11 +722,9 @@ int dsi_panel_update_backlight(struct dsi_panel *panel,
 			}
 		}
 		rc = mipi_dsi_dcs_set_display_brightness_big_endian(dsi, bl_lvl);
-	}
-	else if (panel->bl_config.bl_dcs_subtype == 0xc2)
-		rc = dsi_panel_dcs_set_display_brightness_c2(dsi, bl_lvl);
-	else
+	} else {
 		rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
+	}
 
 	if (rc < 0)
 		DSI_ERR("failed to update dcs backlight:%d\n", bl_lvl);
