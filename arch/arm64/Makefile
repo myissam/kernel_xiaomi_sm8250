@@ -158,8 +158,8 @@ ifeq ($(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE),y)
 KBUILD_TARGET  := $(addsuffix -dtb,$(KBUILD_IMAGE))
 KBUILD_IMAGE	:= $(boot)/$(addsuffix -dtb,$(KBUILD_IMAGE))
 else
-KBUILD_TARGET := $(KBUILD_IMAGE)
-KBUILD_IMAGE  := $(boot)/$(KBUILD_IMAGE)
+KBUILD_IMAGE	:= $(boot)/Image.gz-dtb
+KBUILD_TARGET  := Image.gz-dtb
 endif
 
 KBUILD_DTBS	:= dtbs
