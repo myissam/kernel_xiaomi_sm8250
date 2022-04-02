@@ -38,6 +38,7 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
+#include <linux/cpu_input_boost.h>
 #if defined(CONFIG_DRM)
 #include <drm/drm_notifier_mi.h>
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
@@ -75,7 +76,7 @@ static int fts_ts_resume(struct device *dev);
 
 #define LPM_EVENT_INPUT 0x1
 extern void lpm_disable_for_dev(bool on, char event_dev);
-extern void touch_irq_boost(void);
+//extern void touch_irq_boost(void);
 
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 static void fts_read_palm_data(u8 reg_value);
@@ -735,7 +736,8 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 {
 	struct fts_ts_data *ts_data = fts_data;
 
-	touch_irq_boost();
+	//touch_irq_boost();
+	cpu_input_boost_kick();
 	lpm_disable_for_dev(true, LPM_EVENT_INPUT);
 
 	pm_qos_update_request(&ts_data->pm_touch_req, 100);
