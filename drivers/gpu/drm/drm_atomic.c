@@ -35,7 +35,7 @@
 #include <linux/pm_qos.h>
 #include <linux/cpu_input_boost.h>
 #include <linux/devfreq_boost.h>
-#include <linux/sched/sysctl.h>
+//#include <linux/sched/sysctl.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -2603,7 +2603,7 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
 		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
-		if (sysctl_sched_boost || time_before(jiffies, last_input_time + msecs_to_jiffies(3000)))
+		if (time_before(jiffies, last_input_time + msecs_to_jiffies(3000)))
 		    cpu_input_boost_kick();
 	}
 
