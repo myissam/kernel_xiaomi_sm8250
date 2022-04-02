@@ -703,6 +703,13 @@ KBUILD_AFLAGS   += -O2
 KBUILD_LDFLAGS  += -O2
 endif
 
+ifeq ($(cc-name),gcc)
+KBUILD_CFLAGS	+= -mcpu=cortex-a77.cortex-a55 -mtune=cortex-a77.cortex-a55
+endif
+ifeq ($(cc-name),clang)
+KBUILD_CFLAGS	+= $(call cc-option, -mcpu=cortex-a77 -mtune=cortex-a77)
+endif
+
 ifdef CONFIG_INLINE_OPTIMIZATION
 ifdef CONFIG_CC_IS_CLANG
 KBUILD_CFLAGS	+= -mllvm -inline-threshold=600
