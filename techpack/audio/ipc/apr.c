@@ -521,7 +521,7 @@ struct apr_svc *apr_register(char *dest, char *svc_name, apr_fn svc_fn,
 			pr_debug("%s: Wait for modem to bootup\n", __func__);
 			rc = wait_event_interruptible_timeout(modem_wait,
 						(apr_get_modem_state() == APR_SUBSYS_UP),
-						(1 * HZ));
+				     msecs_to_jiffies(1000));
 			if (rc == 0) {
 				pr_err("%s: Modem is not Up\n", __func__);
 				return NULL;
