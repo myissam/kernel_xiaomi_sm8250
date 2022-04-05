@@ -72,7 +72,6 @@ static int qcom_glink_ssr_callback(struct rpmsg_device *rpdev,
 		dev_err(ssr->dev, "message too short\n");
 		return -EINVAL;
 	}
-
 	if (le32_to_cpu(msg->version) != 0)
 		return -EINVAL;
 
