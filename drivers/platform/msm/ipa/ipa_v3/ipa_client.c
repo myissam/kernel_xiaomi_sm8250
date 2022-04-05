@@ -123,7 +123,7 @@ int ipa3_disable_data_path(u32 clnt_hdl)
 	if (ipa3_ctx->ipa_hw_type < IPA_HW_v4_0) {
 		/* Suspend the pipe */
 		if (IPA_CLIENT_IS_CONS(ep->client)) {
-			memset(&ep_cfg_ctrl, 0, sizeof(struct ipa_ep_cfg_ctrl));
+				memset(&ep_cfg_ctrl, 0, sizeof(struct ipa_ep_cfg_ctrl));
 			ep_cfg_ctrl.ipa_ep_suspend = true;
 			res = ipa3_cfg_ep_ctrl(clnt_hdl, &ep_cfg_ctrl);
 		}
