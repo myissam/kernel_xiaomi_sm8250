@@ -2903,7 +2903,7 @@ static bool shrink_node(pg_data_t *pgdat, struct scan_control *sc)
 			 * faster than they are written so also forcibly stall.
 			 */
 			if (sc->nr.immediate)
-				congestion_wait(BLK_RW_ASYNC, HZ/10);
+				congestion_wait(BLK_RW_ASYNC, msecs_to_jiffies(100));
 		}
 
 		/*
@@ -2922,7 +2922,7 @@ static bool shrink_node(pg_data_t *pgdat, struct scan_control *sc)
 		 */
 		if (!sc->hibernation_mode && !current_is_kswapd() &&
 		   current_may_throttle() && pgdat_memcg_congested(pgdat, root))
-			wait_iff_congested(BLK_RW_ASYNC, HZ/10);
+			wait_iff_congested(BLK_RW_ASYNC, msecs_to_jiffies(100));
 
 	} while (should_continue_reclaim(pgdat, sc->nr_reclaimed - nr_reclaimed,
 					 sc->nr_scanned - nr_scanned, sc));
@@ -3278,7 +3278,7 @@ static bool throttle_direct_reclaim(gfp_t gfp_mask, struct zonelist *zonelist,
 	 */
 	if (!(gfp_mask & __GFP_FS)) {
 		wait_event_interruptible_timeout(pgdat->pfmemalloc_wait,
-			allow_direct_reclaim(pgdat, true), HZ);
+			allow_direct_reclaim(pgdat, true), msecs_to_jiffies(1000));
 
 		goto check_pending;
 	}
@@ -3868,7 +3868,7 @@ static void kswapd_try_to_sleep(pg_data_t *pgdat, int alloc_order, int reclaim_o
 		 */
 		wakeup_kcompactd(pgdat, alloc_order, classzone_idx);
 
-		remaining = schedule_timeout(HZ/10);
+		remaining = schedule_timeout(msecs_to_jiffies(100));
 
 		/*
 		 * If woken prematurely then reset kswapd_classzone_idx and
