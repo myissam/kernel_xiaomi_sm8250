@@ -583,6 +583,17 @@ config OKL4_RINGBUF
 	  Say Y here if you want to test communication between OKL4 guests
 	  using virtual interrupts and shared memory.
 
+config SYSTRACE
+  def_bool y if TRACING
+  help
+    This module exports ATRACE_XXX APIs at kernel.
+    All tracepoints can be identified and plotted at Chrome tracing UI.
+
+    Use APIs exported by this module to correlate kernel activities
+    to userspace and system events in the timeline.
+
+    If in doubt, say N.
+
 config HALL_AKM09970
 	tristate "HALL_AK09970 digital hall sensor support"
 	depends on I2C
