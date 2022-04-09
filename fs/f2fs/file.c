@@ -31,7 +31,6 @@
 #include "gc.h"
 #include "trace.h"
 #include <trace/events/f2fs.h>
-#include <trace/events/android_fs.h>
 
 static vm_fault_t f2fs_filemap_fault(struct vm_fault *vmf)
 {
@@ -269,16 +268,6 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
 
 	trace_f2fs_sync_file_enter(inode);
 
-	if (trace_android_fs_fsync_start_enabled()) {
-		char *path, pathbuf[MAX_TRACE_PATHBUF_LEN];
-
-		path = android_fstrace_get_pathname(pathbuf,
-				MAX_TRACE_PATHBUF_LEN, inode);
-		trace_android_fs_fsync_start(inode,
-				current->pid, path, current->comm);
-	}
-	start_time = ktime_get();
-
 	if (S_ISDIR(inode->i_mode))
 		goto go_write;
 
@@ -383,29 +372,9 @@ flush_out:
 	}
 	f2fs_update_time(sbi, REQ_TIME);
 out:
-	delta = ktime_sub(ktime_get(), start_time);
-	duration = (unsigned long long) ktime_to_ns(delta) / (1000 * 1000);
-
-	/* print slow fsync spend more than 1s */
-	if (duration > 1000) {
-		char *file_path, file_pathbuf[MAX_TRACE_PATHBUF_LEN];
-
-		file_path = android_fstrace_get_pathname(file_pathbuf,
-				MAX_TRACE_PATHBUF_LEN, inode);
-		pr_info("[f2fs] slow fsync: %llu ms, cp_reason: %s, "
-			"datasync = %d, ret = %d, comm: %s: (uid %u, gid %u), "
-			"entry: %s", duration, f2fs_cp_reasons[cp_reason],
-			datasync, ret, current->comm,
-			from_kuid_munged(&init_user_ns, current_fsuid()),
-			from_kgid_munged(&init_user_ns, current_fsgid()),
-			file_path);
-	}
-
 	trace_f2fs_sync_file_exit(inode, cp_reason, datasync, ret);
 	f2fs_trace_ios(NULL, 1);
 	stat_inc_sync_file_count(sbi);
-	trace_android_fs_fsync_end(inode, start, end - start);
-
 	return ret;
 }
 
