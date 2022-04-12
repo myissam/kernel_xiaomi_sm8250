@@ -116,6 +116,7 @@ struct dsi_phy_cfg {
 	unsigned long bit_clk_rate_hz;
 	u32 data_lanes;
 	unsigned long clk_strength;
+	u32 data_lanes;
 	bool cphy_strength;
 };
 
