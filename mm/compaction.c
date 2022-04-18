@@ -2421,7 +2421,7 @@ module_param_named(compaction_screen_off_delay_ms,
 static unsigned long compaction_forced_timeout;
 
 
-static int msm_drm_notifier_callback(struct notifier_block *self,
+static int mi_drm_notifier_callback(struct notifier_block *self,
 				       unsigned long event, void *data)
 {
 	struct mi_drm_notifier *evdata = data;
@@ -2436,7 +2436,6 @@ static int msm_drm_notifier_callback(struct notifier_block *self,
 	blank = evdata->data;
 	switch (*blank) {
 	case MI_DRM_BLANK_POWERDOWN:
-	case MI_DRM_EVENT_BLANK:
 		if (!screen_on)
 			goto out;
 		screen_on = false;
@@ -2458,7 +2457,7 @@ out:
 }
 
 static struct notifier_block compaction_notifier_block = {
-	.notifier_call = msm_drm_notifier_callback,
+	.notifier_call = mi_drm_notifier_callback,
 };
 
 /* Compact all zones within a node */
@@ -2817,8 +2816,6 @@ static int __init kcompactd_init(void)
 	return 0;
 }
 subsys_initcall(kcompactd_init)
-
-extern struct drm_panel *lcd_active_panel;
 
 static int  __init scheduled_compaction_init(void)
 {
