@@ -786,7 +786,6 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	return 0;
 }
 
-#ifdef CONFIG_SCHED_WALT
 static int sched_boost_override_write_wrapper(struct cgroup_subsys_state *css,
 					      struct cftype *cft, u64 override)
 {
@@ -798,6 +797,7 @@ static int sched_boost_override_write_wrapper(struct cgroup_subsys_state *css,
 	return sched_boost_override_write(css, cft, override);
 }
 
+#ifdef CONFIG_SCHED_WALT
 static int sched_colocate_write_wrapper(struct cgroup_subsys_state *css,
 					struct cftype *cft, u64 colocate)
 {
@@ -943,8 +943,6 @@ schedtune_boostgroup_init(struct schedtune *st, int idx)
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	boost_slots_init(st);
 #endif // CONFIG_DYNAMIC_STUNE_BOOST
-
-	return 0;
 }
 
 #ifdef CONFIG_STUNE_ASSIST
@@ -963,7 +961,7 @@ static void write_default_values(struct cgroup_subsys_state *css)
 		{ "background",	0, 0, 0, 0 },
 		{ "foreground",	0, 1, 0, 1 },
 		{ "rt",		0, 0, 0, 0 },
-		{ "top-app",	1, 1, 0, 1 },
+		{ "top-app",	0, 1, 0, 1 },
 	};
 	int i;
 
@@ -977,9 +975,9 @@ static void write_default_values(struct cgroup_subsys_state *css)
 
 			boost_write(css, NULL, tgt.boost);
 			prefer_idle_write(css, NULL, tgt.prefer_idle);
+			sched_boost_override_write(css, NULL, tgt.no_override);
 #ifdef CONFIG_SCHED_WALT
 			sched_colocate_write(css, NULL, tgt.colocate);
-			sched_boost_override_write(css, NULL, tgt.no_override);
 #endif
 		}
 	}
@@ -990,7 +988,7 @@ static void write_default_values(struct cgroup_subsys_state *css)
 static void filterSchedtune(struct schedtune *sti, struct schedtune **sto_p, char *st_name)
 {
 	if (!strncmp(sti->css.cgroup->kn->name, st_name, strlen(st_name))) {
-		sti->sched_boost = 20;
+		sti->sched_boost = 10;
 		*sto_p = sti;
 	}
 }
