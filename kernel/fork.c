@@ -97,6 +97,7 @@
 #include <linux/scs.h>
 #include <linux/simple_lmk.h>
 #include <linux/devfreq_boost.h>
+#include <linux/cpu_input_boost.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -2376,8 +2377,11 @@ long _do_fork(unsigned long clone_flags,
 	int trace = 0;
 	long nr;
 
-
-	devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
+	/* Boost CPU/DDR to the max for 1250 ms when userspace launches an app */
+	if (is_zygote_pid(current->pid))  {
+		cpu_input_boost_kick_max(1250);
+		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 1250);
+	}
 	/*
 	 * Determine whether and which event to report to ptracer.  When
 	 * called from kernel_thread or CLONE_UNTRACED is explicitly
