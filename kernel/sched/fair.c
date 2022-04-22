@@ -100,6 +100,7 @@ unsigned int sysctl_sched_wakeup_granularity		= 1000000UL;
 unsigned int normalized_sysctl_sched_wakeup_granularity	= 1000000UL;
 
 const_debug unsigned int sysctl_sched_migration_cost	= 500000UL;
+DEFINE_PER_CPU_READ_MOSTLY(int, sched_load_boost);
 
 #ifdef CONFIG_SMP
 /*
@@ -3229,18 +3230,6 @@ static inline void cfs_rq_util_change(struct cfs_rq *cfs_rq, int flags)
 	}
 }
 
-static inline int per_task_boost(struct task_struct *p)
-{
-	if (p->boost_period) {
-		if (sched_clock() > p->boost_expires) {
-			p->boost_period = 0;
-			p->boost_expires = 0;
-			p->boost = 0;
-		}
-	}
-	return p->boost;
-}
-
 #ifdef CONFIG_SMP
 #ifdef CONFIG_FAIR_GROUP_SCHED
 /**
@@ -4053,20 +4042,18 @@ static inline void adjust_cpus_for_packing(struct task_struct *p,
 			struct find_best_target_env *fbt_env,
 			bool boosted)
 {
-	unsigned long tutil, estimated_capacity;
+	unsigned long estimated_capacity;
 
 	if (*best_idle_cpu == -1 || *target_cpu == -1)
 		return;
 
-	if (fbt_env->need_idle ||
+	if (fbt_env->need_idle || boosted ||
 	    boosted || shallowest_idle_cstate <= 0) {
 		*target_cpu = -1;
 		return;
 	}
 
-	tutil = task_util(p);
-
-	estimated_capacity = cpu_util_cum(*target_cpu, tutil);
+	estimated_capacity = cpu_util_cum(*target_cpu, task_util(p));
 	estimated_capacity = add_capacity_margin(estimated_capacity,
 							*target_cpu);
 
@@ -4180,20 +4167,6 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 			thresh >>= 1;
 
 		vruntime -= thresh;
-		if (entity_is_task(se)) {
-			if (per_task_boost(task_of(se)) ==
-						TASK_BOOST_STRICT_MAX)
-				vruntime -= sysctl_sched_latency;
-#ifdef CONFIG_SCHED_WALT
-			else if (unlikely(task_of(se)->low_latency)) {
-				vruntime -= sysctl_sched_latency;
-				vruntime -= thresh;
-				se->vruntime = min_vruntime(vruntime,
-							se->vruntime);
-				return;
-			}
-#endif
-		}
 	}
 
 	/* ensure we never gain time by being placed backwards. */
@@ -5503,15 +5476,11 @@ static inline void hrtick_update(struct rq *rq)
 #ifdef CONFIG_SMP
 static unsigned long capacity_of(int cpu);
 
-bool __cpu_overutilized(int cpu, int delta)
-{
-	return !fits_capacity((cpu_util(cpu) + delta), capacity_orig_of(cpu),
-			      sched_capacity_margin_up[cpu]);
-}
 
 bool cpu_overutilized(int cpu)
 {
-	return __cpu_overutilized(cpu, 0);
+	return (capacity_of(cpu) * 1024) <
+		(cpu_util(cpu) * sched_capacity_margin_up[cpu]);
 }
 
 static bool sd_overutilized(struct sched_domain *sd)
@@ -6721,7 +6690,7 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 
 	time = cpu_clock(this);
 
-	cpumask_and(cpus, sched_domain_span(sd), p->cpus_ptr);
+	cpumask_and(cpus, sched_domain_span(sd), &p->cpus_allowed);
 
 	for_each_cpu_wrap(cpu, cpus, target) {
 		if (!--nr)
@@ -6899,7 +6868,6 @@ static int get_start_cpu(struct task_struct *p, bool sync_boost)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 	int start_cpu = rd->min_cap_orig_cpu;
-	int task_boost = per_task_boost(p);
 	bool boosted = uclamp_boosted(p);
 
 	/*
@@ -6910,11 +6878,6 @@ static int get_start_cpu(struct task_struct *p, bool sync_boost)
 	if (boosted) {
 		start_cpu = rd->mid_cap_orig_cpu == -1 ?
 			rd->max_cap_orig_cpu : rd->mid_cap_orig_cpu;
-	}
-
-	if (task_boost > TASK_BOOST_ON_MID) {
-		start_cpu = rd->max_cap_orig_cpu;
-		return start_cpu;
 	}
 
 	if (start_cpu == -1 || start_cpu == rd->max_cap_orig_cpu)
@@ -7657,8 +7620,7 @@ static DEFINE_PER_CPU(cpumask_t, energy_cpus);
  */
 
 static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
-				     int sync, bool sync_boost,
-				     int sibling_count_hint)
+				     int sync, bool sync_boost)
 {
 	unsigned long prev_energy = ULONG_MAX, best_energy = ULONG_MAX;
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
@@ -7757,9 +7719,9 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		goto unlock;
 	}
 
-	if (task_placement_boost_enabled(p) || fbt_env.need_idle || boosted ||
-	    is_rtg || __cpu_overutilized(prev_cpu, delta) ||
-	    !task_fits_max(p, prev_cpu) || cpu_isolated(prev_cpu)) {
+	if (fbt_env.need_idle || boosted ||
+	    cpu_overutilized(prev_cpu) || cpu_isolated(prev_cpu)  ||
+	    !task_fits_capacity(p, capacity_orig_of(prev_cpu), prev_cpu)) {
 		best_energy_cpu = cpu;
 		goto unlock;
 	}
@@ -7859,8 +7821,7 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 				goto sd_loop;
 
 			new_cpu = find_energy_efficient_cpu(p, prev_cpu, sync,
-							    sync_boost,
-							    sibling_count_hint);
+							    sync_boost);
 			if (new_cpu >= 0)
 				return new_cpu;
 			new_cpu = prev_cpu;
@@ -8698,6 +8659,12 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 				return 0;
 		}
 	}
+
+	/* Don't detach task if it doesn't fit on the destination */
+	if (env->flags & LBF_IGNORE_BIG_TASKS &&
+		!task_fits_capacity(p, capacity_of(env->dst_cpu),
+				    env->dst_cpu))
+			return 0;
 
 	if (task_running(env->src_rq, p)) {
 		schedstat_inc(p->se.statistics.nr_failed_migrations_running);
@@ -10184,7 +10151,7 @@ static struct sched_group *find_busiest_group(struct lb_env *env)
 			/* TODO:don't assume same cap cpus are in same domain */
 			capacity_local = capacity_orig_of(cpu_local);
 			capacity_busiest = capacity_orig_of(cpu_busiest);
-			if ((sds.busiest->group_weight > 1) &&
+			if (sds.busiest->group_weight > 1 &&
 				capacity_local > capacity_busiest) {
 				goto out_balanced;
 			} else if (capacity_local == capacity_busiest) {
