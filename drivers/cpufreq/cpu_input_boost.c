@@ -164,6 +164,12 @@ static void update_online_cpu_policy(void)
 	put_online_cpus();
 }
 
+static void unboost_all_cpus(struct boost_drv *b)
+{
+	clear_bit(INPUT_BOOST | MAX_BOOST, &b->state);
+	wake_up(&b->boost_waitq);
+}
+
 static void __cpu_input_boost_kick(struct boost_drv *b)
 {
 	if (test_bit(SCREEN_OFF, &b->state))
@@ -313,7 +319,7 @@ static int mi_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
 		__cpu_input_boost_kick_max(b, wake_boost_duration);
 	} else {
 		set_bit(SCREEN_OFF, &b->state);
-		wake_up(&b->boost_waitq);
+		unboost_all_cpus(b);
 	}
 
 	return NOTIFY_OK;
@@ -364,6 +370,9 @@ free_handle:
 
 static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
+	struct boost_drv *b = handle->handler->private;
+
+	unboost_all_cpus(b);
 	input_close_device(handle);
 	input_unregister_handle(handle);
 	kfree(handle);
