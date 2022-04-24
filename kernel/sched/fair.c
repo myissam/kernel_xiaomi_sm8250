@@ -5731,13 +5731,13 @@ static struct {
 #endif /* CONFIG_NO_HZ_COMMON */
 
 /* CPU only has SCHED_IDLE tasks enqueued */
-/* static int sched_idle_cpu(int cpu)
+static int sched_idle_cpu(int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
 
 	return unlikely(rq->nr_running == rq->cfs.idle_h_nr_running &&
 			rq->nr_running);
-} */
+}
 
 /**
  * __cpu_load_update - update the rq->cpu_load[] statistics
