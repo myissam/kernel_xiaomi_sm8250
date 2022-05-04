@@ -97,6 +97,7 @@
 #include <linux/scs.h>
 #include <linux/simple_lmk.h>
 #include <linux/devfreq_boost.h>
+#include <linux/cpu_input_boost.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -1041,6 +1042,7 @@ static inline void __mmput(struct mm_struct *mm)
 	exit_mmap(mm);
 	simple_lmk_mm_freed(mm);
 	mm_put_huge_zero_page(mm);
+	lru_gen_del_mm(mm);
 	set_mm_exe_file(mm, NULL);
 	if (!list_empty(&mm->mmlist)) {
 		spin_lock(&mmlist_lock);
@@ -1049,7 +1051,6 @@ static inline void __mmput(struct mm_struct *mm)
 	}
 	if (mm->binfmt)
 		module_put(mm->binfmt->module);
-	lru_gen_del_mm(mm);
 	mmdrop(mm);
 }
 
@@ -2352,8 +2353,10 @@ long _do_fork(unsigned long clone_flags,
 	long nr;
 
 	/* Boost DDR bus to the max for 50 ms when userspace launches an app */
-	if (task_is_zygote(current))
-		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
+	if (task_is_zygote(current)) {
+		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+		cpu_input_boost_kick();
+	}	
 
 	/*
 	 * Determine whether and which event to report to ptracer.  When
