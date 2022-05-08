@@ -2585,11 +2585,7 @@ retry:
 #ifdef CONFIG_CMA
 static struct page *__rmqueue_cma(struct zone *zone, unsigned int order)
 {
-	struct page *page = 0;
-
-	if (IS_ENABLED(CONFIG_CMA))
-		if (!zone->cma_alloc)
-			page = __rmqueue_cma_fallback(zone, order);
+	struct page *page = __rmqueue_cma_fallback(zone, order);
 	trace_mm_page_alloc_zone_locked(page, order, MIGRATE_CMA);
 	return page;
 }
@@ -8354,9 +8350,6 @@ int alloc_contig_range(unsigned long start, unsigned long end,
 	if (ret)
 		return ret;
 
-#ifdef CONFIG_CMA
-	cc.zone->cma_alloc = 1;
-#endif
 	/*
 	 * In case of -EBUSY, we'd like to know which page causes problem.
 	 * So, just fall through. test_pages_isolated() has a tracepoint
@@ -8439,9 +8432,6 @@ int alloc_contig_range(unsigned long start, unsigned long end,
 done:
 	undo_isolate_page_range(pfn_max_align_down(start),
 				pfn_max_align_up(end), migratetype);
-#ifdef CONFIG_CMA
-	cc.zone->cma_alloc = 0;
-#endif
 	return ret;
 }
 
