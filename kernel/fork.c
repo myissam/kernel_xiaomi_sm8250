@@ -1069,7 +1069,6 @@ static inline void __mmput(struct mm_struct *mm)
 	exit_mmap(mm);
 	simple_lmk_mm_freed(mm);
 	mm_put_huge_zero_page(mm);
-	lru_gen_del_mm(mm);
 	set_mm_exe_file(mm, NULL);
 	if (!list_empty(&mm->mmlist)) {
 		spin_lock(&mmlist_lock);
