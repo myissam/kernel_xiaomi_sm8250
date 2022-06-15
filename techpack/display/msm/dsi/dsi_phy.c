@@ -326,6 +326,7 @@ static int dsi_phy_settings_init(struct platform_device *pdev,
 
 	phy->allow_phy_power_off = of_property_read_bool(pdev->dev.of_node,
 			"qcom,panel-allow-phy-poweroff");
+	phy->allow_phy_power_off = true;
 
 	of_property_read_u32(pdev->dev.of_node,
 			"qcom,dsi-phy-regulator-min-datarate-bps",
