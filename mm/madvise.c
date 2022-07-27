@@ -475,7 +475,7 @@ regular_page:
 			if (!isolate_lru_page(page))
 				list_add(&page->lru, &page_list);
 		} else
-			deactivate_page(page);
+			deactivate_file_page(page);
 	}
 
 	arch_leave_lazy_mmu_mode();
